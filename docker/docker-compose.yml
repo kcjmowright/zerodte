@@ -1,0 +1,21 @@
+name: "zerodte"
+
+services:
+  apache:
+    image: httpd:latest
+    container_name: zerodte-apache
+    ports:
+      - "8000:80"
+      - "8443:443"
+    volumes:
+      # base config
+      - ./apache/httpd.conf:/usr/local/apache2/conf/httpd.conf:cached
+      - ./apache/zerodte.conf:/usr/local/apache2/conf/extra/zerodte.conf:cached
+      # Self-signed certificate
+      - ./apache/ssl/localhost.key:/usr/local/apache2/conf/server.key:cached
+      - ./apache/ssl/localhost.crt:/usr/local/apache2/conf/server.crt:cached
+
+networks:
+  default:
+    name: dev-stack
+    driver: bridge

@@ -1,0 +1,52 @@
+
+Write an agent program and tests using:
+Java 21,
+org.springframework.boot:spring-boot-starter-actuator,
+org.springframework.boot:spring-boot-starter-web,
+spring-boot-starter-webflux
+org.projectlombok:lombok
+schwab-marketdata-client at https://github.com/kcjmowright/schwab-marketdata-client,
+and schwab-trader-client at https://github.com/kcjmowright/schwab-trader-client,
+
+that sells to open, an iron condor at market price every stock market day at 15 minutes past the opening bell (8:45 AM CST).
+The put credit spread leg should use a 0 dated option spread
+where the short put option is approximately -0.40 delta
+and the long put option is approximately -0.10 delta.
+The put credit spread should be closed if 95% of the profit is met
+or if an 80% loss is met
+or if only 5 minutes remain before the closing bell (2:55 PM CST).
+The call credit spread leg should use a 0 dated option spread
+where the short call option is approximately 0.40 delta
+and the long call option is approximately 0.10 delta.
+The call credit spread should be closed if 95% of the profit is met
+or if an 80% loss is met
+or if only 5 minutes remain before the closing bell (2:55 PM CST).
+
+
+
+
+
+
+
+
+
+## Example
+
+https://trade.thinkorswim.com/trade?symbol=QQQ&leg1=-1,.QQQ250131P510&leg2=1,.QQQ250131P520&orderType=LIMIT&limitPrice=1.82&orderTif=DAY
+https://trade.thinkorswim.com/trade?symbol=QQQ&leg1=-1,.QQQ250131C524&leg2=1,.QQQ250131C534&orderType=LIMIT&limitPrice=1.78&orderTif=DAY
+
+* Buy 1 Jan 31 510 put ASK (long) .QQQ250131P510
+* Sell 1 Jan 31 520 put BID (short) .QQQ250131P520
+* Buy 1 Jan 31 534 call ASK (long) .QQQ250131C534
+* Sell 1 Jan 31 524 call BID (short) .QQQ250131C524
+
+## Job
+
+1. Authenticate using Oauth2 and store token.
+2. Get option quotes.
+3. At 15 minutes after the opening bell, place order for a 0 DTE PCS and a 0 DTE CCS, an iron condor.
+4. Wait for confirmation.
+5. Record assets.
+6. Check sell conditions every minute.
+7. 5 minutes before the market close, sell any remaining opening positions.
+

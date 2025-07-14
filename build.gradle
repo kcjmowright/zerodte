@@ -1,0 +1,92 @@
+plugins {
+	id 'java'
+	id "com.github.node-gradle.node" version "3.5.0"
+	id 'org.springframework.boot' version '3.4.3'
+	id 'io.spring.dependency-management' version '1.1.7'
+	id 'org.graalvm.buildtools.native' version '0.10.5'
+	id 'org.flywaydb.flyway' version '6.4.3'
+}
+
+group = 'com.kcjmowright'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation group: 'com.opencsv', name: 'opencsv', version: '5.11'
+	compileOnly 'org.projectlombok:lombok'
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+	runtimeOnly 'org.postgresql:postgresql'
+	implementation 'org.flywaydb:flyway-core'
+	implementation 'org.flywaydb:flyway-database-postgresql'
+	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'io.projectreactor:reactor-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	implementation group: 'com.pangility', name: 'schwab-api-client', version: '0.1.6'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
+tasks.register('printRuntimeClasspath') {
+	def runtimeClasspath = sourceSets.main.runtimeClasspath
+	inputs.files(runtimeClasspath)
+	doLast {
+		println runtimeClasspath.join(File.pathSeparator)
+	}
+}
+
+node {
+	download = true
+	workDir = file("${project.projectDir}/.gradle/nodejs")
+	npmWorkDir = file("${project.projectDir}/.gradle/npm")
+	nodeProjectDir = file("${project.projectDir}/src/ui")
+	version = "22.15.0"
+}
+
+tasks.register('appNpmInstall', NpmTask) {
+	description = " read package.json and install all jars"
+	workingDir = file("${project.projectDir}/src/ui")
+	args = ["install", "--debug"]
+}
+
+tasks.register('buildReactApp', NpmTask) {
+	dependsOn 'appNpmInstall'
+	description = "Builds application for your frontend "
+	workingDir = file("${project.projectDir}/src/ui")
+	args = ["run", "build"]
+}
+
+tasks.register('copyReactBuild', Copy) {
+	dependsOn 'buildReactApp'
+	from "${project.projectDir}/src/ui/dist"
+	into "${project.projectDir}/src/main/resources/static"
+}
+
+processResources.dependsOn copyReactBuild
+
+flyway {
+	url = 'jdbc:postgresql://localhost:5432/zerodte'
+	user = 'postgres'
+	locations = ['classpath:db/migration']
+}
+

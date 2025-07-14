@@ -1,0 +1,38 @@
+#server:
+#  servlet:
+#    context-path: '/api'
+
+spring:
+  application:
+    name: 'Zero DTE Agent'
+  jpa:
+    hibernate:
+      ddl-auto: none
+    database: postgresql
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/zerodte
+    username: postgres
+
+schwab-api:
+  oauth2:
+    clientId: EXAMPLE_CLIENT_ID
+    clientSecret: EXAMPLE_CLIENT_SECRET
+    redirect-uri: https://127.0.0.1:8443/oauth2/schwab/code
+
+zerodte:
+  agent:
+    accountNumber: 'EXAMPLE_ACCOUNT_NUMBER'
+    call:
+      shortDelta: 0.40
+      longDelta: 0.10
+    lossLimitPercent: 0.7
+    profitTargetPercent: 0.9
+    put:
+      shortDelta: -0.40
+      longDelta: -0.10
+    quantity: 1.0
+    simulate: true
+    symbol: '$SPX'
+    userId: 'EXAMPLE_USER_NAME'
+
