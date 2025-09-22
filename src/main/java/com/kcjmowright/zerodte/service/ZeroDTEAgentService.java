@@ -16,7 +16,6 @@ import com.kcjmowright.zerodte.model.*;
 import com.kcjmowright.zerodte.repository.OrderRepository;
 import com.kcjmowright.zerodte.repository.PositionRepository;
 import com.kcjmowright.zerodte.repository.QuoteRepository;
-import com.kcjmowright.zerodte.repository.SessionRepository;
 import com.pangility.schwab.api.client.accountsandtrading.SchwabAccountsAndTradingApiClient;
 import com.pangility.schwab.api.client.accountsandtrading.model.account.Account;
 import com.pangility.schwab.api.client.accountsandtrading.model.account.Position;
@@ -24,7 +23,6 @@ import com.pangility.schwab.api.client.accountsandtrading.model.instrument.Asset
 import com.pangility.schwab.api.client.accountsandtrading.model.instrument.EquityInstrument;
 import com.pangility.schwab.api.client.accountsandtrading.model.order.Duration;
 import com.pangility.schwab.api.client.accountsandtrading.model.order.*;
-import com.pangility.schwab.api.client.common.EnableSchwabApi;
 import com.pangility.schwab.api.client.marketdata.SchwabMarketDataApiClient;
 import com.pangility.schwab.api.client.marketdata.model.chains.OptionChainRequest;
 import com.pangility.schwab.api.client.marketdata.model.chains.OptionChainResponse;
@@ -32,12 +30,10 @@ import com.pangility.schwab.api.client.marketdata.model.chains.OptionContract;
 import com.pangility.schwab.api.client.marketdata.model.movers.MoversRequest;
 import com.pangility.schwab.api.client.marketdata.model.movers.Screener;
 import com.pangility.schwab.api.client.marketdata.model.quotes.QuoteResponse;
-import com.pangility.schwab.api.client.oauth2.SchwabAccount;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -45,8 +41,6 @@ import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
 
 @Service
-@EnableSchwabApi
-@EnableScheduling
 @RequiredArgsConstructor
 @Slf4j
 public class ZeroDTEAgentService {
@@ -61,15 +55,8 @@ public class ZeroDTEAgentService {
   private final PositionRepository positionRepository;
   private final QuoteRepository quoteRepository;
   private final SchwabAccountsAndTradingApiClient accountsAndTradingClient;
-  private final SchwabApiClientTokenService schwabApiClientTokenService;
+  private final SchwabApiClientTokenService tokenService;
   private final SchwabMarketDataApiClient marketDataClient;
-  private final SessionRepository sessionRepository;
-
-  @Value("${zerodte.agent.userId}")
-  private String userId;
-
-  @Value("${zerodte.agent.accountNumber}")
-  private String accountNumber;
 
   @Value("${zerodte.agent.symbol:QQQ}")
   private String symbol;
@@ -103,8 +90,6 @@ public class ZeroDTEAgentService {
   private final AtomicReference<Set<TickerSymbol>> openPositionIds = new AtomicReference<>(new HashSet<>());
 
   private final AtomicReference<Set<TickerSymbol>> closedPositionIds = new AtomicReference<>(new HashSet<>());
-
-  private String encryptedAccountHash;
 
   /**
    * Execute the Zero Date Iron Condor Strategy.
@@ -278,7 +263,8 @@ public class ZeroDTEAgentService {
    * @return the {@link Account}.
    */
   public Mono<Account> fetchAccount() {
-    return accountsAndTradingClient.fetchAccountToMono(userId, getEncryptedAccountHash(), "positions")
+    return accountsAndTradingClient
+        .fetchAccountToMono(tokenService.getUserId(), tokenService.getEncryptedAccountHash(), "positions")
         .retryWhen(Retry.backoff(3, java.time.Duration.ofSeconds(2)));
         // .log();
   }
@@ -294,7 +280,8 @@ public class ZeroDTEAgentService {
         .withFromEnteredTime(fromEnteredTime)
         .withToEnteredTime(now)
         .build();
-    return accountsAndTradingClient.fetchOrdersToFlux(userId, getEncryptedAccountHash(), orderRequest)
+    return accountsAndTradingClient
+        .fetchOrdersToFlux(tokenService.getUserId(), tokenService.getEncryptedAccountHash(), orderRequest)
         .retryWhen(Retry.backoff(3, java.time.Duration.ofSeconds(2)));
         // .log();
   }
@@ -305,7 +292,8 @@ public class ZeroDTEAgentService {
    * @return the {@link Order}
    */
   public Mono<Order> fetchOrder(Long orderId) {
-    return accountsAndTradingClient.fetchOrderToMono(userId, getEncryptedAccountHash(), orderId)
+    return accountsAndTradingClient
+        .fetchOrderToMono(tokenService.getUserId(), tokenService.getEncryptedAccountHash(), orderId)
         .retryWhen(Retry.backoff(3, java.time.Duration.ofSeconds(2)));
         // .log();
   }
@@ -317,7 +305,7 @@ public class ZeroDTEAgentService {
    */
   Mono<String> placeOrder(Order order) {
     return accountsAndTradingClient
-        .placeOrder(userId, getEncryptedAccountHash(), order)
+        .placeOrder(tokenService.getUserId(), tokenService.getEncryptedAccountHash(), order)
         .retryWhen(Retry.backoff(3, java.time.Duration.ofSeconds(2)));
         // .log();
   }
@@ -672,24 +660,6 @@ public class ZeroDTEAgentService {
   @PostConstruct
   private void init() {
     log.info("Initializing ZeroDTE agent...");
-    if (!(accountsAndTradingClient.isInitialized() && marketDataClient.isInitialized())) {
-      List<SessionEntity> sessions = sessionRepository.findAll();
-      SchwabAccount schwabAccount = new SchwabAccount();
-      schwabAccount.setUserId(userId);
-      if (!sessions.isEmpty()) {
-        SessionEntity session = sessions.getFirst();
-        schwabAccount.setAccessToken(session.getToken());
-        schwabAccount.setAccessExpiration(session.getAccessExpiration());
-        schwabAccount.setRefreshToken(session.getRefreshToken());
-        schwabAccount.setRefreshExpiration(session.getRefreshExpiration());
-      }
-      if (!accountsAndTradingClient.isInitialized()) {
-        accountsAndTradingClient.init(schwabAccount, schwabApiClientTokenService);
-      }
-      if (!marketDataClient.isInitialized()) {
-        marketDataClient.init(schwabAccount, schwabApiClientTokenService);
-      }
-    }
     Set<TickerSymbol> symbols = positionRepository.findByClosedIsNull().stream()
         .map(PositionEntity::getSymbol)
         .map(TickerSymbol::fromString).collect(Collectors.toSet());
@@ -705,20 +675,5 @@ public class ZeroDTEAgentService {
     openPositionIds.get().addAll(openPositions.stream()
         .map(PositionEntity::getSymbol).map(TickerSymbol::fromString).collect(Collectors.toSet()));
 
-  }
-
-  /**
-   * Fetch the encrypted hash value of this account.
-   * @return encrypted account hash value.
-   */
-  private String getEncryptedAccountHash() {
-    if (encryptedAccountHash == null) {
-      encryptedAccountHash = accountsAndTradingClient.fetchEncryptedAccountsToFlux(userId)
-          .retryWhen(Retry.backoff(3, java.time.Duration.ofSeconds(2)))
-          .toStream()
-          .filter(account -> Objects.equals(account.getAccountNumber(), accountNumber))
-          .findFirst().orElseThrow().getHashValue();
-    }
-    return encryptedAccountHash;
   }
 }
