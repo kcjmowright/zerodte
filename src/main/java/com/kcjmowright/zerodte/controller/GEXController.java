@@ -4,6 +4,7 @@ import com.kcjmowright.zerodte.model.TotalGEX;
 import com.kcjmowright.zerodte.service.GammaExposureService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -24,8 +26,8 @@ public class GEXController {
   @GetMapping("/gex/{symbol}")
   public Mono<TotalGEX> getGEX(
       @PathVariable String symbol,
-      @RequestParam(value = "fromDate") LocalDate fromDate,
-      @RequestParam(value = "toDate") LocalDate toDate) {
-    return gammaExposureService.computeGammaExposure(symbol, fromDate, toDate);
+      @RequestParam(value = "expDate", required = false) List<LocalDate> expirationDates,
+      @RequestParam(value = "suppressDetails", required = false) @DefaultValue("false") boolean supressDetails) {
+    return gammaExposureService.computeGammaExposure(symbol, expirationDates, supressDetails);
   }
 }

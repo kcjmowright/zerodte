@@ -6,15 +6,21 @@ import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
 @RequiredArgsConstructor
-public class OptionContractGEX {
-  private final ExpirationDateStrike expirationDateStrike;
-  private OptionContract callContract;
-  private OptionContract putContract;
-  private BigDecimal callGEX;
-  private BigDecimal putGEX;
-  private BigDecimal totalGEX;
+public class OptionContractGEX implements Comparable<OptionContractGEX> {
+  private final BigDecimal strike;
+  private final List<OptionContract> contracts = new ArrayList<>();
+  private BigDecimal callGEX = BigDecimal.ZERO;
+  private BigDecimal putGEX = BigDecimal.ZERO;
+  private BigDecimal totalGEX = BigDecimal.ZERO;
+
+  @Override
+  public int compareTo(OptionContractGEX o) {
+    return strike.compareTo(o.getStrike());
+  }
 }
