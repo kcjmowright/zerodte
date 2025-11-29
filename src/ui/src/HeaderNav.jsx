@@ -15,9 +15,9 @@ function HeaderNav() {
                         <NavLink to="/orders"
                                  className={({isActive}) => isActive ? "rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white"
                                      : "rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white"}>Orders</NavLink>
-                        <NavLink to="/quote"
+                        <NavLink to="/gex"
                                  className={({isActive}) => isActive ? "rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white"
-                                     : "rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white"}>Quote</NavLink>
+                                     : "rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white"}>GEX</NavLink>
                         <NavLink to="/movers"
                                  className={({isActive}) => isActive ? "rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white"
                                      : "rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white"}>Movers</NavLink>

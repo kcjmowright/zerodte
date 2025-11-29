@@ -7,7 +7,7 @@ import HeaderNav from "./HeaderNav.jsx";
 import Login from "./Login.jsx";
 import Movers from "./Movers.jsx";
 import Orders from "./Orders.jsx";
-import Quote from "./Quote.jsx";
+import GammaExposure from "./GammaExposure.jsx";
 
 createRoot(document.getElementById("root")).render(
     <BrowserRouter>
@@ -15,7 +15,7 @@ createRoot(document.getElementById("root")).render(
         <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="account" element={<Account />} />
-            <Route path="quote" element={<Quote />} />
+            <Route path="gex" element={<GammaExposure />} />
             <Route path="movers" element={<Movers />} />
             <Route path="orders" element={<Orders />} />
             <Route path="login" element={<Login />} />

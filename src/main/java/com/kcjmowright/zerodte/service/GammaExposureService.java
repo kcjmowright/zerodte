@@ -4,19 +4,20 @@ import com.kcjmowright.zerodte.model.TotalGEX;
 import com.pangility.schwab.api.client.marketdata.SchwabMarketDataApiClient;
 import com.pangility.schwab.api.client.marketdata.model.chains.OptionChainRequest;
 import com.pangility.schwab.api.client.marketdata.model.chains.OptionContract;
+import com.pangility.schwab.api.client.marketdata.model.expirationchain.Expiration;
+import com.pangility.schwab.api.client.marketdata.model.expirationchain.ExpirationChainResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
@@ -29,6 +30,7 @@ public class GammaExposureService {
     LocalDate to;
     if (Objects.isNull(expirationDates) || expirationDates.isEmpty()) {
       from = to = LocalDate.now();
+      expirationDates = List.of(from);
     } else if (expirationDates.size() == 1) {
       from = to = expirationDates.getFirst();
     } else {
@@ -55,4 +57,8 @@ public class GammaExposureService {
         });
   }
 
+  public Flux<LocalDate> fetchExpirationDates(String symbol) {
+    return marketDataClient.fetchExpirationChainToMono(symbol).flatMapMany(res ->
+        Flux.fromStream(res.getExpirationList().stream().map(Expiration::getExpirationDate)));
+  }
 }

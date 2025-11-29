@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
@@ -29,5 +30,10 @@ public class GEXController {
       @RequestParam(value = "expDate", required = false) List<LocalDate> expirationDates,
       @RequestParam(value = "suppressDetails", required = false) @DefaultValue("false") boolean supressDetails) {
     return gammaExposureService.computeGammaExposure(symbol, expirationDates, supressDetails);
+  }
+
+  @GetMapping("/gex/expirations/{symbol}")
+  public Flux<LocalDate> getGEX(@PathVariable String symbol) {
+    return gammaExposureService.fetchExpirationDates(symbol);
   }
 }

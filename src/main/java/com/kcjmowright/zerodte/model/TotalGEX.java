@@ -17,7 +17,7 @@ import java.util.stream.Stream;
 @Setter
 @NoArgsConstructor
 public class TotalGEX {
-  private Map<BigDecimal, OptionContractGEX> gexPerStrike = new TreeMap<>(Comparator.naturalOrder());
+  private Map<BigDecimal, OptionContractGEX> gexPerStrike = new TreeMap<>(Comparator.reverseOrder());
   private BigDecimal totalCallGEX = BigDecimal.ZERO;
   private BigDecimal totalPutGEX = BigDecimal.ZERO;
   private BigDecimal totalGEX = BigDecimal.ZERO;
