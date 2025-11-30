@@ -49,90 +49,47 @@ function Account() {
                             }
                             return (
                                 <>
-                                <dl>
-                                    <dt>Account Number:</dt>
+                                <dl className="flex gap-4 items-center mb-4">
+                                    <dt className="font-semibold">Account Number:</dt>
                                     <dd>{account.accountNumber}</dd>
-                                </dl>
-                                <dl>
-                                    <dt>Accrued Interest:</dt>
-                                    <dd>{account.currentBalances.accruedInterest}</dd>
-                                    <dt>Cash Balance:</dt>
-                                    <dd>{account.currentBalances.cashBalance}</dd>
-                                    <dt>Cash Receipts:</dt>
-                                    <dd>{account.currentBalances.cashReceipts}</dd>
-                                    <dt>Long Option Market Value:</dt>
-                                    <dd>{account.currentBalances.longOptionMarketValue}</dd>
-                                    <dt>Liquidation Value:</dt>
+                                    <dt className="font-semibold">Liquidation Value:</dt>
                                     <dd>{account.currentBalances.liquidationValue}</dd>
-                                    <dt>Long Market Value:</dt>
-                                    <dd>{account.currentBalances.longMarketValue}</dd>
-                                    <dt>Money Market Fund:</dt>
-                                    <dd>{account.currentBalances.moneyMarketFund}</dd>
-                                    <dt>Savings:</dt>
-                                    <dd>{account.currentBalances.savings}</dd>
-                                    <dt>Short Market Value:</dt>
-                                    <dd>{account.currentBalances.shortMarketValue}</dd>
-                                    <dt>Pending Deposits:</dt>
-                                    <dd>{account.currentBalances.pendingDeposits}</dd>
-                                    <dt>Available Funds:</dt>
+                                    <dt className="font-semibold">Cash Balance:</dt>
+                                    <dd>{account.currentBalances.cashBalance}</dd>
+                                    <dt className="font-semibold">Available Funds:</dt>
                                     <dd>{account.currentBalances.availableFunds}</dd>
-                                    <dt>Available Funds Non Marginable Trade:</dt>
-                                    <dd>{account.currentBalances.availableFundsNonMarginableTrade}</dd>
-                                    <dt>Buying Power:</dt>
+                                    <dt className="font-semibold">Buying Power:</dt>
                                     <dd>{account.currentBalances.buyingPower}</dd>
-                                    <dt>Buying Power Non Marginable Trade:</dt>
-                                    <dd>{account.currentBalances.buyingPowerNonMarginableTrade}</dd>
-                                    <dt>Day Trading Buying Power:</dt>
+                                    <dt className="font-semibold">Day Trading Buying Power:</dt>
                                     <dd>{account.currentBalances.dayTradingBuyingPower}</dd>
-                                    <dt>Equity:</dt>
+                                    <dt className="font-semibold">Equity:</dt>
                                     <dd>{account.currentBalances.equity}</dd>
-                                    <dt>Equity Percentage:</dt>
-                                    <dd>{account.currentBalances.equityPercentage}</dd>
-                                    <dt>Long Margin Value:</dt>
-                                    <dd>{account.currentBalances.longMarginValue}</dd>
-                                    <dt>Maintenance Call:</dt>
-                                    <dd>{account.currentBalances.maintenanceCall}</dd>
-                                    <dt>Maintenance Requirement:</dt>
-                                    <dd>{account.currentBalances.maintenanceRequirement}</dd>
-                                    <dt>Margin Balance:</dt>
-                                    <dd>{account.currentBalances.marginBalance}</dd>
-                                    <dt>Reg T Call:</dt>
-                                    <dd>{account.currentBalances.regTCall}</dd>
-                                    <dt>Short Balance:</dt>
-                                    <dd>{account.currentBalances.shortBalance}</dd>
-                                    <dt>Short Margin Value:</dt>
-                                    <dd>{account.currentBalances.shortMarginValue}</dd>
-                                    <dt>Short Option Market Value:</dt>
-                                    <dd>{account.currentBalances.shortOptionMarketValue}</dd>
-                                    <dt>SMA:</dt>
-                                    <dd>{account.currentBalances.sma}</dd>
-                                    <dt>Mutual Fund Value:</dt>
-                                    <dd>{account.currentBalances.mutualFundValue}</dd>
-                                    <dt>Bond Value:</dt>
-                                    <dd>{account.currentBalances.bondValue}</dd>
                                 </dl>
+
+                                <h2 className="text-2xl font-bold tracking-tight text-gray-900 mb-4">Positions</h2>
+
                                 <table
                                     className="w-full border-collapse border border-gray-400 bg-white text-sm dark:border-gray-500 dark:bg-gray-800">
                                     <thead className="bg-gray-50 dark:bg-gray-700">
-                                    <tr>
-                                        <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">
-                                            &nbsp;</th>
-                                        <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">
-                                            Qty
-                                        </th>
-                                        <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">
-                                            Avg. Price
-                                        </th>
-                                        <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">
-                                            Market Value
-                                        </th>
-                                        <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">
-                                            Today's Profit/Loss
-                                        </th>
-                                        <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">
-                                            Today's Profit/Loss %
-                                        </th>
-                                    </tr>
+                                        <tr>
+                                            <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">
+                                                &nbsp;</th>
+                                            <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">
+                                                Qty
+                                            </th>
+                                            <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">
+                                                Avg. Price
+                                            </th>
+                                            <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">
+                                                Market Value
+                                            </th>
+                                            <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">
+                                                Today's Profit/Loss
+                                            </th>
+                                            <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">
+                                                Today's Profit/Loss %
+                                            </th>
+                                        </tr>
                                     </thead>
                                     <tbody>
                                     {
@@ -147,55 +104,6 @@ function Account() {
                                             </tr>;
                                         })
                                     }
-                                {/*
-{
-                "shortQuantity": 0,
-                "averagePrice": 18.3966,
-                "currentDayProfitLoss": 5.5,
-                "currentDayProfitLossPercentage": 0.43,
-                "longQuantity": 1,
-                "settledLongQuantity": 1,
-                "settledShortQuantity": 0,
-                "instrument": {
-                    "assetType": "OPTION",
-                    "cusip": "0QQQ..SV50510000",
-                    "symbol": "QQQ   250731P00510000",
-                    "description": "INVESCO QQQ TR 07/31/2025 $510 Put",
-                    "type": "VANILLA",
-                    "putCall": "PUT",
-                    "underlyingSymbol": "QQQ"
-                },
-                "marketValue": 1291.5,
-                "longOpenProfitLoss": -548.16,
-                "taxLotAverageLongPrice": 18.3966,
-                "maintenanceRequirement": 0,
-                "previousSessionLongQuantity": 1,
-                "averageLongPrice": 18.39,
-                "currentDayCost": 0
-            },
-            {
-                "shortQuantity": 1,
-                "averagePrice": 8.3934,
-                "currentDayProfitLoss": -1.58,
-                "currentDayProfitLossPercentage": -0.41,
-                "longQuantity": 0,
-                "settledLongQuantity": 0,
-                "settledShortQuantity": -1,
-                "instrument": {
-                    "assetType": "OPTION",
-                    "cusip": "0QQQ..RK50500000",
-                    "symbol": "QQQ   250620P00500000",
-                    "description": "INVESCO QQQ TR 06/20/2025 $500 Put",
-                    "type": "VANILLA",
-                    "putCall": "PUT",
-                    "underlyingSymbol": "QQQ"
-                },
-                "marketValue": -390.5,
-                "maintenanceRequirement": 0,
-                "currentDayCost": 0
-            }
-
-                */}
                                 </tbody>
                             </table>
                           </>

@@ -57,7 +57,7 @@ function ZeroDteIronCondor({inSymbol}) {
                     if (loading) {
                         return <Loading />;
                     }
-                    if (!!error) {
+                    if (error) {
                         return <Alert message={error.message} />;
                     }
                     if (!ironCondor) {

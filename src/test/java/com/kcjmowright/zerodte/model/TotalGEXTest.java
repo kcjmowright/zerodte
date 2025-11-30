@@ -13,7 +13,7 @@ public class TotalGEXTest {
   @Test
   void shouldComputeTotalGEX() {
     try (Stream<OptionContract> contracts = Stream.of()) {
-      TotalGEX totalGEX = TotalGEX.fromOptionContracts(contracts, new BigDecimal("100.0"));
+      TotalGEX totalGEX = TotalGEX.fromOptionContracts(contracts, new BigDecimal("100.0"), true);
       assertNotNull(totalGEX);
     }
 

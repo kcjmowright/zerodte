@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Alert from "./Alert.jsx";
 import Loading from "./Loading.jsx";
-import VerticalComposedChart from "./VerticalComposedChart.jsx";
+import GEXChart from "./GEXChart.jsx";
 
 function GammaExposure() {
     const [quote, setQuote] = useState(null);
@@ -12,7 +12,6 @@ function GammaExposure() {
     const [error, setError] = useState(null);
 
     async function fetchGEXData(symbol, expDates) {
-        console.log("fetchGEXData(symbol:" + symbol + ", expDates:" + expDates);
         if (!symbol) {
             return;
         }
@@ -59,13 +58,18 @@ function GammaExposure() {
         }
         try {
             setLoading(loading + 1);
-            const response = await fetch("/api/v1/gex/expirations/" + symbol);
+            const response = await fetch(`/api/v1/gex/expirations/${encodeURIComponent(symbol)}`);
             if (!response.ok) {
                 const e = await response.json();
                 throw new Error(`${e.message}`);
             }
             const result = await response.json();
             setExpirationDates(result);
+            setGEX(null);
+            const select = document.getElementById("expirationDates");
+            if (select) {
+                select.selectedIndex = -1;
+            }
         } catch (error) {
             setError(error);
         } finally {
@@ -89,7 +93,6 @@ function GammaExposure() {
 
     useEffect(() => {
         (async () => await fetchCurrentQuoteData(selectedSymbol))();
-        (async () => await fetchGEXData(selectedSymbol, expirationDates))();
         (async () => await fetchOptionExpirationDates(selectedSymbol))();
     }, [selectedSymbol]);
 
@@ -122,13 +125,13 @@ function GammaExposure() {
                             if (loading > 0) {
                                 return <Loading />;
                             }
-                            if (!(quote && gex)) {
+                            if (!quote) {
                                 return <div></div>;
                             }
                             return <>
                                 <div>
-                                    <h2 className="text-2xl font-bold tracking-tight text-gray-900">{quote.symbol}</h2>
-                                    <dl className="flex gap-6 items-center">
+                                    <h2 className="text-2xl font-bold tracking-tight text-gray-900 mb-4">{quote.reference.description} ({quote.symbol})</h2>
+                                    <dl className="flex gap-4 items-center">
                                         <dt className="font-semibold">Close:</dt>
                                         <dd>{quote.quote.closePrice}</dd>
                                         <dt className="font-semibold">Net Change:</dt>
@@ -138,36 +141,50 @@ function GammaExposure() {
                                         <dt className="font-semibold">Volume:</dt>
                                         <dd>{quote.quote.totalVolume}</dd>
                                     </dl>
-                                    <dl className="flex gap-6 items-center">
-                                        <dt className="font-semibold">Total Call GEX:</dt>
-                                        <dd>{gex.totalCallGEX}</dd>
-                                        <dt className="font-semibold">Total Put GEX:</dt>
-                                        <dd>{gex.totalPutGEX}</dd>
-                                        <dt className="font-semibold">Total GEX:</dt>
-                                        <dd>{gex.totalGEX}</dd>
-                                        <dt className="font-semibold">Call Wall</dt>
-                                        <dd>{gex.callWall}</dd>
-                                        <dt className="font-semibold">Put Wall</dt>
-                                        <dd>{gex.putWall}</dd>
-                                    </dl>
+                                    <div className="flex gap-4">
+                                        <label className="font-semibold">Expiration Dates:</label>
+                                        <select
+                                            id="expirationDates"
+                                            name="expirationDates"
+                                            onChange={handleExpirationDates}
+                                            multiple
+                                            size="1"
+                                            className="h-6 border rounded px-2 overflow-auto">
+                                            { expirationDates.map((expirationDate) => (
+                                                <option key={expirationDate} value={expirationDate}>
+                                                    {expirationDate}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    {
+                                        (() => {
+                                            if (!gex) {
+                                                return <></>;
+                                            }
+                                            return <dl className="flex gap-4 items-center">
+                                                <dt className="font-semibold">Total Call GEX:</dt>
+                                                <dd>{gex.totalCallGEX}</dd>
+                                                <dt className="font-semibold">Total Put GEX:</dt>
+                                                <dd>{gex.totalPutGEX}</dd>
+                                                <dt className="font-semibold">Total GEX:</dt>
+                                                <dd>{gex.totalGEX}</dd>
+                                                <dt className="font-semibold">Call Wall</dt>
+                                                <dd>{gex.callWall}</dd>
+                                                <dt className="font-semibold">Put Wall</dt>
+                                                <dd>{gex.putWall}</dd>
+                                            </dl>
+                                        })()
+                                    }
                                 </div>
-                                <div className="flex gap-4">
-                                    <label className="font-semibold">Expiration Dates:</label>
-                                    <select
-                                        id="expirationDates"
-                                        name="expirationDates"
-                                        onChange={handleExpirationDates}
-                                        multiple
-                                        size="1"
-                                        className="h-6 border rounded px-2 overflow-auto">
-                                        { expirationDates.map((expirationDate) => (
-                                            <option key={expirationDate} value={expirationDate}>
-                                                {expirationDate}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <VerticalComposedChart data={Object.values(gex.gexPerStrike)}/>
+                                {
+                                    (() => {
+                                        if (!gex) {
+                                            return <></>;
+                                        }
+                                        return <GEXChart data={Object.values(gex.gexPerStrike)}/>
+                                    })()
+                                }
                             </>;
                         })()
                     }
@@ -185,117 +202,3 @@ function GammaExposure() {
 }
 
 export default GammaExposure;
-/*
-{
-    "assetMainType"
-:
-    "EQUITY",
-        "realtime"
-:
-    true,
-        "ssid"
-:
-    48644470,
-        "symbol"
-:
-    "QQQ",
-        "assetSubType"
-:
-    "ETF",
-        "quoteType"
-:
-    "NBBO",
-        "quote"
-:
-    {
-        "closePrice"
-    :
-        519.93,
-            "netChange"
-    :
-        -1.55,
-            "netPercentChange"
-    :
-        -0.29811705,
-            "securityStatus"
-    :
-        "Normal",
-            "totalVolume"
-    :
-        67662836,
-            "tradeTime"
-    :
-        1748649598851,
-            "askMICId"
-    :
-        "ARCX",
-            "askPrice"
-    :
-        518.49,
-            "askSize": 1,
-    "askTime": 1748649594452,
-    "bidMICId": "ARCX",
-    "bidPrice": 518.27,
-    "bidSize": 2,
-    "bidTime": 1748649594397,
-    "highPrice": 520.68,
-    "lastMICId": "XADF",
-    "lastPrice": 518.38,
-    "lastSize": 1,
-    "lowPrice": 511.93,
-    "mark": 519.11,
-    "markChange": -0.82,
-    "markPercentChange": -0.15771354,
-    "openPrice": 519.44,
-    "postMarketChange": -0.73,
-    "postMarketPercentChange": -0.1406253,
-    "quoteTime": 1748649594452,
-    "52WeekHigh": 540.81,
-    "52WeekLow": 402.39
-  },
-  "reference": {
-    "cusip": "46090E103",
-    "description": "INVESCO QQQ TRUST",
-    "exchange": "Q",
-    "exchangeName": "NASDAQ",
-    "htbRate": 0,
-    "isHardToBorrow": false,
-    "isShortable": true
-  },
-  "extended": {
-    "askPrice": 0,
-    "askSize": 0,
-    "bidPrice": 0,
-    "bidSize": 0,
-    "lastPrice": 518.93,
-    "lastSize": 4,
-    "mark": 0,
-    "quoteTime": 1748592000000,
-    "totalVolume": 0,
-    "tradeTime": 1748591983000
-  },
-  "fundamental": {
-    "avg10DaysVolume": 51974768,
-    "avg1YearVolume": 37737123,
-    "declarationDate": "2025-03-21T00:00:00",
-    "divAmount": 2.86284,
-    "divExDate": "2025-03-24T00:00:00",
-    "divFreq": 4,
-    "divPayAmount": 0.71571,
-    "divPayDate": "2025-04-30T00:00:00",
-    "divYield": 0.5517,
-    "eps": 126.30331,
-    "fundLeverageFactor": 0,
-    "nextDivExDate": "2025-06-24T00:00:00",
-    "nextDivPayDate": "2025-07-30T00:00:00",
-    "peRatio": 4.11652
-  },
-  "regular": {
-    "regularMarketLastPrice": 519.11,
-    "regularMarketLastSize": 555567,
-    "regularMarketNetChange": -0.82,
-    "regularMarketPercentChange": -0.15771354,
-    "regularMarketTradeTime": 1748635200324
-  }
-}
- */

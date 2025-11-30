@@ -55,12 +55,10 @@ function Movers() {
     return (
         <>
             <header className="bg-white shadow-sm">
-                <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                    <h1 className="text-3xl font-bold tracking-tight text-gray-900">Movers</h1>
-                </div>
-            </header>
-            <main>
-                <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+                <div className="grid grid-cols-[70%_30%] gap-4 mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Movers</h1>
+                    </div>
                     <div>
                         <select
                             id="mover"
@@ -68,7 +66,7 @@ function Movers() {
                             value={selectedMover}
                             onChange={handleChange}
                             required
-                            className="border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            className="h-6 border rounded px-2 overflow-auto">
                             { moverOptions.map((moverOption) => (
                                 <option key={moverOption.id} value={moverOption.symbol}>
                                     {moverOption.symbol}
@@ -76,6 +74,10 @@ function Movers() {
                             ))}
                         </select>
                     </div>
+                </div>
+            </header>
+            <main>
+                <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
                     {
                         (() => {
                             if (loading) {
@@ -87,15 +89,15 @@ function Movers() {
                             return <div>
                                 <table className="w-full border-collapse border border-gray-400 bg-white text-sm dark:border-gray-500 dark:bg-gray-800">
                                     <thead className="bg-gray-50 dark:bg-gray-700">
-                                    <tr>
-                                        <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">Last Price</th>
-                                        <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">Net Change</th>
-                                        <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">Net % Change</th>
-                                        <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">Total Volume</th>
-                                        <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">Volume</th>
-                                        <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">Market Share</th>
-                                        <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">Trades</th>
-                                    </tr>
+                                        <tr>
+                                            <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">Last Price</th>
+                                            <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">Net Change</th>
+                                            <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">Net % Change</th>
+                                            <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">Total Volume</th>
+                                            <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">Volume</th>
+                                            <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">Market Share</th>
+                                            <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">Trades</th>
+                                        </tr>
                                     </thead>
                                     <tbody>
                                     {
