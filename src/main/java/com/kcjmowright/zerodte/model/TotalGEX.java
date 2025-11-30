@@ -37,8 +37,8 @@ public class TotalGEX {
       boolean suppressDetails) {
 
     final TotalGEX totalGEX = new TotalGEX();
-    final Map<BigDecimal, BigDecimal> callGexPerStrike = new TreeMap<>(); // Track CALL GEX above spot price
-    final Map<BigDecimal, BigDecimal> putGexPerStrike = new TreeMap<>(); // Track PUT GEX below spot price
+    final Map<BigDecimal, BigDecimal> gexAboveSpot = new TreeMap<>(); // Track Total GEX above spot price
+    final Map<BigDecimal, BigDecimal> gexBelowSpot = new TreeMap<>(); // Track Total GEX below spot price
 
     optionContracts.forEach(contract -> {
       OptionContractGEX optionContractGEX = totalGEX.getGexPerStrike()
@@ -50,9 +50,6 @@ public class TotalGEX {
         }
         optionContractGEX.setPutGEX(optionContractGEX.getPutGEX()
             .add(GammaExposure.putGEX(contract.getGamma(), contract.getOpenInterest(), spotPrice)));
-        if (spotPrice.compareTo(contract.getStrikePrice()) >= 0) { // If spot price is GTE the strike price
-          putGexPerStrike.merge(contract.getStrikePrice(), optionContractGEX.getPutGEX(), BigDecimal::add);
-        }
         totalGEX.setTotalPutGEX(totalGEX.getTotalPutGEX().add(optionContractGEX.getPutGEX()));
       } else { // CALLs
         if (!suppressDetails) {
@@ -60,20 +57,22 @@ public class TotalGEX {
         }
         optionContractGEX.setCallGEX(optionContractGEX.getCallGEX()
             .add(GammaExposure.callGEX(contract.getGamma(), contract.getOpenInterest(), spotPrice)));
-        if (spotPrice.compareTo(contract.getStrikePrice()) <= 0) { // If spot price LTE the strike price
-          callGexPerStrike.merge(contract.getStrikePrice(), optionContractGEX.getCallGEX(), BigDecimal::add);
-        }
         totalGEX.setTotalCallGEX(totalGEX.getTotalCallGEX().add(optionContractGEX.getCallGEX()));
       }
       optionContractGEX.setTotalGEX(optionContractGEX.getCallGEX().add(optionContractGEX.getPutGEX()));
+      if (spotPrice.compareTo(contract.getStrikePrice()) > 0) { // If spot price is GT the strike price
+        gexBelowSpot.put(contract.getStrikePrice(), optionContractGEX.getTotalGEX());
+      } else if (spotPrice.compareTo(contract.getStrikePrice()) < 0) { // If spot price LT the strike price
+        gexAboveSpot.put(contract.getStrikePrice(), optionContractGEX.getTotalGEX());
+      }
     });
     // Calculate total GEX
     totalGEX.setTotalGEX(totalGEX.getTotalCallGEX().add(totalGEX.getTotalPutGEX()));
     // Find CALL wall
-    callGexPerStrike.entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey)
+    gexAboveSpot.entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey)
         .ifPresent(totalGEX::setCallWall);
     // Find PUT wall
-    putGexPerStrike.entrySet().stream().min(Map.Entry.comparingByValue()).map(Map.Entry::getKey)
+    gexBelowSpot.entrySet().stream().min(Map.Entry.comparingByValue()).map(Map.Entry::getKey)
         .ifPresent(totalGEX::setPutWall);
     return totalGEX;
   }
