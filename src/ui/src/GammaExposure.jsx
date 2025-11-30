@@ -184,7 +184,7 @@ function GammaExposure() {
                                         if (!gex) {
                                             return <></>;
                                         }
-                                        return <GEXChart data={Object.values(gex.gexPerStrike)}/>
+                                        return <GEXChart data={Object.values(gex.gexPerStrike)} callWall={gex.callWall} putWall={gex.putWall} flipPoint={gex.flipPoint} />
                                     })()
                                 }
                             </>;
