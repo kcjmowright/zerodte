@@ -173,6 +173,8 @@ function GammaExposure() {
                                                 <dd>{gex.callWall}</dd>
                                                 <dt className="font-semibold">Put Wall</dt>
                                                 <dd>{gex.putWall}</dd>
+                                                <dt className="font-semibold">Flip Point</dt>
+                                                <dd>{gex.flipPoint}</dd>
                                             </dl>
                                         })()
                                     }

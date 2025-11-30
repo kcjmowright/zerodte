@@ -9,7 +9,9 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
 import java.util.stream.Stream;
 
@@ -23,6 +25,7 @@ public class TotalGEX {
   private BigDecimal totalGEX = BigDecimal.ZERO;
   private BigDecimal callWall = BigDecimal.ZERO;
   private BigDecimal putWall = BigDecimal.ZERO;
+  private BigDecimal flipPoint = BigDecimal.ZERO;
 
   /**
    * Calculate GEX values from options contracts.
@@ -74,7 +77,41 @@ public class TotalGEX {
     // Find PUT wall
     gexBelowSpot.entrySet().stream().min(Map.Entry.comparingByValue()).map(Map.Entry::getKey)
         .ifPresent(totalGEX::setPutWall);
+    // Find flip point
+    calculateFlipPoint(List.copyOf(totalGEX.getGexPerStrike().entrySet())).ifPresent(totalGEX::setFlipPoint);
     return totalGEX;
   }
+
+  private static Optional<BigDecimal> calculateFlipPoint(List<Map.Entry<BigDecimal, OptionContractGEX>> numbers) {
+    if (numbers == null || numbers.size() < 2) {
+      return Optional.empty();
+    }
+    for (int i = numbers.size(); --i > 0;) {
+      Map.Entry<BigDecimal, OptionContractGEX> previous = numbers.get(i - 1);
+      Map.Entry<BigDecimal, OptionContractGEX> current = numbers.get(i);
+      if ((previous.getValue().getTotalGEX().signum() > 0 && current.getValue().getTotalGEX().signum() < 0)
+          || (previous.getValue().getTotalGEX().signum() < 0 && current.getValue().getTotalGEX().signum() > 0)) {
+        return Optional.of(previous.getKey());
+      }
+    }
+    return Optional.empty();
+  }
+
+//  public static Optional<Integer> findFirstSignChangeStream(List<Integer> numbers) {
+//    return numbers.stream()
+//        // Creates a stream of List<Integer> where each list contains [previous, current]
+//        .gather(Gatherers.windowSliding(2))
+//        // Filter for the pair where a sign change occurred
+//        .filter(pair -> {
+//          int previous = pair.get(0);
+//          int current = pair.get(1);
+//          // Check for opposite signs (excluding zero as a sign changer)
+//          return (previous > 0 && current < 0) || (previous < 0 && current > 0);
+//        })
+//        // Map to get the current value (the second element of the pair)
+//        .map(pair -> pair.get(1))
+//        // Find the first occurrence
+//        .findFirst();
+//  }
 
 }
