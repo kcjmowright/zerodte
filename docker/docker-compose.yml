@@ -1,7 +1,7 @@
 name: "zerodte"
 
 services:
-  apache:
+  zerodte_apache:
     image: httpd:latest
     container_name: zerodte-apache
     ports:

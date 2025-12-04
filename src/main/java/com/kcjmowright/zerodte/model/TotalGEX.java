@@ -63,6 +63,11 @@ public class TotalGEX {
         totalGEX.setTotalCallGEX(totalGEX.getTotalCallGEX().add(optionContractGEX.getCallGEX()));
       }
       optionContractGEX.setTotalGEX(optionContractGEX.getCallGEX().add(optionContractGEX.getPutGEX()));
+      if (optionContractGEX.getTotalGEX().compareTo(BigDecimal.ZERO) == 0
+        && optionContractGEX.getCallGEX().compareTo(BigDecimal.ZERO) == 0
+        && optionContractGEX.getPutGEX().compareTo(BigDecimal.ZERO) == 0) {
+        totalGEX.getGexPerStrike().remove(contract.getStrikePrice());
+      }
       if (spotPrice.compareTo(contract.getStrikePrice()) > 0) { // If spot price is GT the strike price
         gexBelowSpot.put(contract.getStrikePrice(), optionContractGEX.getTotalGEX());
       } else if (spotPrice.compareTo(contract.getStrikePrice()) < 0) { // If spot price LT the strike price

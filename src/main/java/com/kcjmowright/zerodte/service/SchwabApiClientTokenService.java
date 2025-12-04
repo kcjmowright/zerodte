@@ -40,6 +40,7 @@ public class SchwabApiClientTokenService implements SchwabTokenHandler {
     sessionRepository.deleteAll();
     LocalDateTime now = LocalDateTime.now();
     SessionEntity session = new SessionEntity();
+    session.setUsername(schwabAccount.getUserId());
     session.setToken(schwabAccount.getAccessToken());
     session.setAccessExpiration(schwabAccount.getAccessExpiration());
     session.setRefreshToken(schwabAccount.getRefreshToken());
@@ -61,6 +62,7 @@ public class SchwabApiClientTokenService implements SchwabTokenHandler {
       session = sessions.getFirst();
     }
     session.setToken(schwabAccount.getAccessToken());
+    session.setUsername(schwabAccount.getUserId());
     session.setAccessExpiration(schwabAccount.getAccessExpiration());
     session.setRefreshToken(schwabAccount.getRefreshToken());
     session.setRefreshExpiration(schwabAccount.getRefreshExpiration());
@@ -86,13 +88,14 @@ public class SchwabApiClientTokenService implements SchwabTokenHandler {
     if (!(accountsAndTradingClient.isInitialized() && marketDataClient.isInitialized())) {
       List<SessionEntity> sessions = sessionRepository.findAll();
       SchwabAccount schwabAccount = new SchwabAccount();
-      schwabAccount.setUserId(userId);
+//      schwabAccount.setUserId(userId);
       if (!sessions.isEmpty()) {
         SessionEntity session = sessions.getFirst();
         schwabAccount.setAccessToken(session.getToken());
         schwabAccount.setAccessExpiration(session.getAccessExpiration());
         schwabAccount.setRefreshToken(session.getRefreshToken());
         schwabAccount.setRefreshExpiration(session.getRefreshExpiration());
+        schwabAccount.setUserId(session.getUsername());
       }
       if (!accountsAndTradingClient.isInitialized()) {
         accountsAndTradingClient.init(schwabAccount, this);

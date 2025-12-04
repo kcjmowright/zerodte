@@ -1,6 +1,26 @@
 import { NavLink } from "react-router";
+import {useEffect, useState} from "react";
 
 function HeaderNav() {
+
+    const [username, setUsername] = useState(null);
+
+    async function fetchSessionStatus() {
+        try {
+            const response = await fetch("/api/v1/session/status");
+            const status = await response.json();
+            if (status) {
+                setUsername(status.username);
+            }
+        } catch (error) {
+            console.error('Error fetching data:', error);
+        }
+    }
+
+    useEffect(() => {
+        (() => fetchSessionStatus())();
+    }, []);
+
     return (
         <nav className="bg-gray-800">
             <div className="flex flex-1 items-center justify-center sm:items-stretch sm:justify-start">
@@ -21,9 +41,16 @@ function HeaderNav() {
                         <NavLink to="/movers"
                                  className={({isActive}) => isActive ? "rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white"
                                      : "rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white"}>Movers</NavLink>
-                        <NavLink to="/login"
-                                 className={({isActive}) => isActive ? "rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white"
-                                     : "rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white"}>Login</NavLink>
+                        {
+                            (() => {
+                                if (!username) {
+                                    return <NavLink to="/login"
+                                             className={({isActive}) => isActive ? "rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white"
+                                                 : "rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white"}>Login</NavLink>
+                                }
+                                return <div className="rounded-md px-3 py-2 text-sm font-medium text-gray-300 text-white">Hello {username}</div>
+                            })()
+                        }
                     </div>
                 </div>
             </div>

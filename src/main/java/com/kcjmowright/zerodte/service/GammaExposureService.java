@@ -5,7 +5,6 @@ import com.pangility.schwab.api.client.marketdata.SchwabMarketDataApiClient;
 import com.pangility.schwab.api.client.marketdata.model.chains.OptionChainRequest;
 import com.pangility.schwab.api.client.marketdata.model.chains.OptionContract;
 import com.pangility.schwab.api.client.marketdata.model.expirationchain.Expiration;
-import com.pangility.schwab.api.client.marketdata.model.expirationchain.ExpirationChainResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -42,6 +41,7 @@ public class GammaExposureService {
         .withSymbol(symbol)
         .withFromDate(from)
         .withToDate(to)
+        .withIncludeQuotes(true)
         .build();
     final Set<LocalDate> expirationDatesSet = new HashSet<>(expirationDates);
     return marketDataClient.fetchOptionChainToMono(request)

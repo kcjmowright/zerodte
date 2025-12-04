@@ -58,7 +58,7 @@ function GammaExposure() {
         }
         try {
             setLoading(loading + 1);
-            const response = await fetch(`/api/v1/gex/expirations/${encodeURIComponent(symbol)}`);
+            const response = await fetch("/api/v1/gex/expirations/" + symbol);
             if (!response.ok) {
                 const e = await response.json();
                 throw new Error(`${e.message}`);
@@ -89,6 +89,7 @@ function GammaExposure() {
         );
         setError(null);
         await fetchGEXData(selectedSymbol, expDates);
+        await fetchCurrentQuoteData(selectedSymbol);
     }
 
     useEffect(() => {
@@ -132,6 +133,8 @@ function GammaExposure() {
                                 <div>
                                     <h2 className="text-2xl font-bold tracking-tight text-gray-900 mb-4">{quote.reference.description} ({quote.symbol})</h2>
                                     <dl className="flex gap-4 items-center">
+                                        <dt className="font-semibold">Last:</dt>
+                                        <dd>{quote.quote.lastPrice}</dd>
                                         <dt className="font-semibold">Close:</dt>
                                         <dd>{quote.quote.closePrice}</dd>
                                         <dt className="font-semibold">Net Change:</dt>
