@@ -1,6 +1,6 @@
 package com.kcjmowright.zerodte.model;
 
-import com.kcjmowright.zerodte.algo.GammaExposure;
+import com.kcjmowright.zerodte.config.MathConfig;
 import com.pangility.schwab.api.client.marketdata.model.chains.OptionContract;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -8,6 +8,7 @@ import lombok.NonNull;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -83,7 +84,10 @@ public class TotalGEX {
     gexBelowSpot.entrySet().stream().min(Map.Entry.comparingByValue()).map(Map.Entry::getKey)
         .ifPresent(totalGEX::setPutWall);
     // Find flip point
-    calculateFlipPoint(List.copyOf(totalGEX.getGexPerStrike().entrySet())).ifPresent(totalGEX::setFlipPoint);
+    calculateFlipPoint(List.copyOf(totalGEX.getGexPerStrike().entrySet())).ifPresent(flipPoint -> {
+      totalGEX.setFlipPoint(flipPoint);
+      totalGEX.getGexPerStrike().computeIfAbsent(flipPoint, $ -> new OptionContractGEX(flipPoint));
+    });
     return totalGEX;
   }
 
@@ -91,12 +95,25 @@ public class TotalGEX {
     if (numbers == null || numbers.size() < 2) {
       return Optional.empty();
     }
+    Map<BigDecimal, BigDecimal> average = new TreeMap<>();
     for (int i = numbers.size(); --i > 0;) {
-      Map.Entry<BigDecimal, OptionContractGEX> previous = numbers.get(i - 1);
-      Map.Entry<BigDecimal, OptionContractGEX> current = numbers.get(i);
-      if ((previous.getValue().getTotalGEX().signum() > 0 && current.getValue().getTotalGEX().signum() < 0)
-          || (previous.getValue().getTotalGEX().signum() < 0 && current.getValue().getTotalGEX().signum() > 0)) {
-        return Optional.of(previous.getKey());
+      var previous = numbers.get(i - 1);
+      var current = numbers.get(i);
+      var ma = current.getValue().getTotalGEX()
+          .add(previous.getValue().getTotalGEX())
+          .divide(BigDecimal.TWO, MathConfig.MATH_CONTEXT);
+      average.put(numbers.get(i - 1).getKey(), ma);
+    }
+    var averageList = List.copyOf(average.entrySet());
+    for (int i = averageList.size(); --i > 0;) {
+      var previous = averageList.get(i - 1);
+      var current = averageList.get(i);
+      if ((previous.getValue().signum() > 0 && current.getValue().signum() < 0)
+          || (previous.getValue().signum() < 0 && current.getValue().signum() > 0)) {
+        var flipPoint = current.getKey()
+            .add(averageList.get(i + 1).getKey())
+            .divide(BigDecimal.TWO, 0, RoundingMode.DOWN);
+        return Optional.of(flipPoint.setScale(1, RoundingMode.DOWN));
       }
     }
     return Optional.empty();

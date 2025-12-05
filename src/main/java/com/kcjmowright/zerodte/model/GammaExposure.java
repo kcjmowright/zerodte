@@ -1,4 +1,4 @@
-package com.kcjmowright.zerodte.algo;
+package com.kcjmowright.zerodte.model;
 
 import com.kcjmowright.zerodte.config.MathConfig;
 import lombok.NonNull;

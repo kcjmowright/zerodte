@@ -40,7 +40,7 @@ public class SessionController {
           .secure(true)
           .path("/")
           .maxAge(Duration.between(LocalDateTime.now(), session.getRefreshExpiration()))
-          .sameSite("Strict")
+          .sameSite("Lax")
           .build();
       return ResponseEntity.ok()
           .header(HttpHeaders.SET_COOKIE, cookie.toString())
