@@ -45,14 +45,21 @@ function HeaderNav() {
                             (() => {
                                 if (!username) {
                                     return <NavLink to="/login"
-                                             className={({isActive}) => isActive ? "rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white"
-                                                 : "rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white"}>Login</NavLink>
+                                                    className={({isActive}) => isActive ? "rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white"
+                                                        : "rounded-md px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white"}>Login</NavLink>
                                 }
-                                return <div className="rounded-md px-3 py-2 text-sm font-medium text-gray-300 text-white">Hello {username}</div>
                             })()
                         }
                     </div>
                 </div>
+                {
+                    (() => {
+                        if (username) {
+                            return <div
+                                className="ml-auto px-3 py-2 text-sm font-medium text-gray-300 text-white">Hello {username}</div>
+                        }
+                    })()
+                }
             </div>
         </nav>
     );

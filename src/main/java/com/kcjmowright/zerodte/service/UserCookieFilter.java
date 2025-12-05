@@ -23,7 +23,7 @@ public class UserCookieFilter extends OncePerRequestFilter {
       cookie.setHttpOnly(true);
       cookie.setSecure(true);
       cookie.setPath("/");
-      cookie.setMaxAge(60);
+      cookie.setMaxAge(-1);
       response.addCookie(cookie);
     }
     chain.doFilter(request, response);
