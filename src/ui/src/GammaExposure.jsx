@@ -10,13 +10,58 @@ function GammaExposure() {
     const [selectedSymbol, setSelectedSymbol] = useState(null);
     const [loading, setLoading] = useState(0);
     const [error, setError] = useState(null);
+    const [selectedExpDates, setSelectedExpDates] = useState(getInitialExpDates());
+
+    function getInitialExpDates() {
+        const today = new Date();
+        const dates = [];
+
+        // Today's date
+        dates.push(today.toISOString().split('T')[0]);
+
+        // Tomorrow's date
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
+        dates.push(tomorrow.toISOString().split('T')[0]);
+
+        // This Friday
+        const thisFriday = new Date(today);
+        const daysUntilFriday = (5 - today.getDay() + 7) % 7;
+        thisFriday.setDate(today.getDate() + (daysUntilFriday || 7));
+        dates.push(thisFriday.toISOString().split('T')[0]);
+
+        // 3rd Friday of this month
+        const thirdFridayThisMonth = getNthFriday(today.getFullYear(), today.getMonth(), 3);
+        dates.push(thirdFridayThisMonth.toISOString().split('T')[0]);
+
+        // 3rd Friday of next month
+        const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+        const thirdFridayNextMonth = getNthFriday(nextMonth.getFullYear(), nextMonth.getMonth(), 3);
+        dates.push(thirdFridayNextMonth.toISOString().split('T')[0]);
+
+        return dates;
+    }
+
+    function getNthFriday(year, month, n) {
+        const firstDay = new Date(year, month, 1);
+        const firstFriday = new Date(firstDay);
+
+        // Calculate days until first Friday
+        const daysUntilFriday = (5 - firstDay.getDay() + 7) % 7;
+        firstFriday.setDate(1 + daysUntilFriday);
+
+        // Add weeks to get to the nth Friday
+        firstFriday.setDate(firstFriday.getDate() + (n - 1) * 7);
+
+        return firstFriday;
+    }
 
     async function fetchGEXData(symbol, expDates) {
         if (!symbol) {
             return;
         }
         try {
-            setLoading(loading + 1);
+            setLoading(prev => prev + 1);
             const options = "?suppressDetails=true" + expDates.reduce((a, b) => a + "&expDate=" + b, "");
             const response = await fetch("/api/v1/gex/" + symbol + options);
             if (!response.ok) {
@@ -28,7 +73,7 @@ function GammaExposure() {
         } catch (error) {
             setError(error);
         } finally {
-            setLoading(loading - 1);
+            setLoading(prev => prev - 1);
         }
     }
 
@@ -37,7 +82,7 @@ function GammaExposure() {
             return;
         }
         try {
-            setLoading(loading + 1);
+            setLoading(prev => prev + 1);
             const response = await fetch("/api/v1/quote?symbol=" + symbol);
             if (!response.ok) {
                 const e = await response.json();
@@ -48,7 +93,7 @@ function GammaExposure() {
         } catch (error) {
             setError(error);
         } finally {
-            setLoading(loading - 1);
+            setLoading(prev => prev - 1);
         }
     }
 
@@ -57,7 +102,7 @@ function GammaExposure() {
             return;
         }
         try {
-            setLoading(loading + 1);
+            setLoading(prev => prev + 1);
             const response = await fetch("/api/v1/gex/expirations/" + symbol);
             if (!response.ok) {
                 const e = await response.json();
@@ -65,15 +110,10 @@ function GammaExposure() {
             }
             const result = await response.json();
             setExpirationDates(result);
-            setGEX(null);
-            const select = document.getElementById("expirationDates");
-            if (select) {
-                select.selectedIndex = -1;
-            }
         } catch (error) {
             setError(error);
         } finally {
-            setLoading(loading - 1);
+            setLoading(prev => prev - 1);
         }
     }
 
@@ -87,14 +127,24 @@ function GammaExposure() {
         let expDates = Array.from(event.target.selectedOptions).map(
             option => option.value
         );
-        setError(null);
-        await fetchGEXData(selectedSymbol, expDates);
-        await fetchCurrentQuoteData(selectedSymbol);
+        setSelectedExpDates(expDates);
     }
 
     useEffect(() => {
-        (async () => await fetchCurrentQuoteData(selectedSymbol))();
-        (async () => await fetchOptionExpirationDates(selectedSymbol))();
+        (async () => {
+            await fetchGEXData(selectedSymbol, selectedExpDates);
+            await fetchCurrentQuoteData(selectedSymbol);
+        })();
+    }, [selectedExpDates]);
+
+    useEffect(() => {
+        (async () => {
+            setGEX(null);
+            setLoading(0);
+            await fetchCurrentQuoteData(selectedSymbol)
+            await fetchOptionExpirationDates(selectedSymbol);
+            await fetchGEXData(selectedSymbol, selectedExpDates);
+        })();
     }, [selectedSymbol]);
 
     return (
@@ -123,7 +173,7 @@ function GammaExposure() {
                 <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
                     {
                         (() => {
-                            if (loading > 0) {
+                            if (!quote && loading > 0) {
                                 return <Loading />;
                             }
                             if (!quote) {
@@ -149,6 +199,7 @@ function GammaExposure() {
                                         <select
                                             id="expirationDates"
                                             name="expirationDates"
+                                            value={selectedExpDates}
                                             onChange={handleExpirationDates}
                                             multiple
                                             size="1"
@@ -157,11 +208,15 @@ function GammaExposure() {
                                                 <option key={expirationDate} value={expirationDate}>
                                                     {expirationDate}
                                                 </option>
-                                            ))}
+                                              ))
+                                            }
                                         </select>
                                     </div>
                                     {
                                         (() => {
+                                            if (!gex && loading > 0) {
+                                                return <Loading />;
+                                            }
                                             if (!gex) {
                                                 return <></>;
                                             }

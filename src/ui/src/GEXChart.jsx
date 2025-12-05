@@ -4,7 +4,7 @@ const GEXChart = ({data, callWall, putWall, flipPoint}) => {
     return (
         <ComposedChart
             layout="vertical"
-            style={{ width: "100%", maxHeight: "75vh", aspectRatio: 1 / 1.618 }}
+            style={{ width: "100%", maxHeight: "60vh", aspectRatio: 1 / 1.618 }}
             responsive
             data={data}
             margin={{
