@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Alert from "./Alert.jsx";
 import Loading from "./Loading.jsx";
 import GEXChart from "./GEXChart.jsx";
+import CandleStickChart from "./CandleStickChart.jsx";
 
 function GammaExposure() {
     const [quote, setQuote] = useState(null);
@@ -11,6 +12,7 @@ function GammaExposure() {
     const [loading, setLoading] = useState(0);
     const [error, setError] = useState(null);
     const [selectedExpDates, setSelectedExpDates] = useState(getInitialExpDates());
+    const [quoteStudies, setQuoteStudies] = useState(null);
 
     function getInitialExpDates() {
         const today = new Date();
@@ -45,11 +47,9 @@ function GammaExposure() {
     function getNthFriday(year, month, n) {
         const firstDay = new Date(year, month, 1);
         const firstFriday = new Date(firstDay);
-
         // Calculate days until first Friday
         const daysUntilFriday = (5 - firstDay.getDay() + 7) % 7;
         firstFriday.setDate(1 + daysUntilFriday);
-
         // Add weeks to get to the nth Friday
         firstFriday.setDate(firstFriday.getDate() + (n - 1) * 7);
 
@@ -62,8 +62,8 @@ function GammaExposure() {
         }
         try {
             setLoading(prev => prev + 1);
-            const options = "?suppressDetails=true" + expDates.reduce((a, b) => a + "&expDate=" + b, "");
-            const response = await fetch("/api/v1/gex/" + symbol + options);
+            const options = "suppressDetails=true" + expDates.reduce((a, b) => a + "&expDate=" + b, "");
+            const response = await fetch(`/api/v1/gex/${symbol}?${options}`);
             if (!response.ok) {
                 const e = await response.json();
                 throw new Error(`${e.message}`);
@@ -83,7 +83,7 @@ function GammaExposure() {
         }
         try {
             setLoading(prev => prev + 1);
-            const response = await fetch("/api/v1/quote?symbol=" + symbol);
+            const response = await fetch(`/api/v1/quote?symbol=${symbol}`);
             if (!response.ok) {
                 const e = await response.json();
                 throw new Error(`${e.message}`);
@@ -103,13 +103,34 @@ function GammaExposure() {
         }
         try {
             setLoading(prev => prev + 1);
-            const response = await fetch("/api/v1/gex/expirations/" + symbol);
+            const response = await fetch(`/api/v1/gex/expirations/${symbol}`);
             if (!response.ok) {
                 const e = await response.json();
                 throw new Error(`${e.message}`);
             }
             const result = await response.json();
             setExpirationDates(result);
+        } catch (error) {
+            setError(error);
+        } finally {
+            setLoading(prev => prev - 1);
+        }
+    }
+
+    async function fetchQuoteStudies(symbol, startDate, endDate) {
+        if (!symbol) {
+            return;
+        }
+        try {
+            setLoading(prev => prev + 1);
+            const url = `/api/v1/price-history/${symbol}?startDate=${startDate}&endDate=${endDate}`;
+            const response = await fetch(url);
+            if (!response.ok) {
+                const e = await response.json();
+                throw new Error(`${e.message}`);
+            }
+            const result = await response.json();
+            setQuoteStudies(result.quoteStudies);
         } catch (error) {
             setError(error);
         } finally {
@@ -144,6 +165,12 @@ function GammaExposure() {
             await fetchCurrentQuoteData(selectedSymbol)
             await fetchOptionExpirationDates(selectedSymbol);
             await fetchGEXData(selectedSymbol, selectedExpDates);
+            const today = new Date();
+            const oneWeekAgo = new Date(today);
+            oneWeekAgo.setDate(today.getDate() - 7);
+            const startDate = oneWeekAgo.toISOString().split("T")[0];
+            const endDate = today.toISOString().split("T")[0]
+            await fetchQuoteStudies(selectedSymbol, startDate, endDate);
         })();
     }, [selectedSymbol]);
 
@@ -242,7 +269,10 @@ function GammaExposure() {
                                         if (!gex) {
                                             return <></>;
                                         }
-                                        return <GEXChart data={Object.values(gex.gexPerStrike)} callWall={gex.callWall} putWall={gex.putWall} flipPoint={gex.flipPoint} />
+                                        return <div className="grid grid-cols-[70%_30%] items-start">
+                                            { quoteStudies && <CandleStickChart quoteStudies={quoteStudies} /> }
+                                            <GEXChart data={Object.values(gex.gexPerStrike)} callWall={gex.callWall} putWall={gex.putWall} flipPoint={gex.flipPoint} />
+                                        </div>
                                     })()
                                 }
                             </>;

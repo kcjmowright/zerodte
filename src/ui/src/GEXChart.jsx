@@ -1,6 +1,22 @@
 import { ComposedChart, Area, Bar, XAxis, YAxis, ReferenceLine, CartesianGrid, Tooltip, Legend } from "recharts";
 
 const GEXChart = ({data, callWall, putWall, flipPoint}) => {
+
+    const CustomTooltip = ({ active, payload, label }) => {
+        if (active && payload && payload.length) {
+            const data = payload[0].payload; // Access the original data object
+            return (
+                <div style={{ backgroundColor: 'white', padding: '10px', border: '1px solid #ccc' }}>
+                    <p>Strike: ${label}</p>
+                    <p style={{ color: payload[0].stroke }}>Call GEX: {data.callGEX}</p>
+                    <p style={{ color: payload[1].stroke }}>Put GEX: {data.putGEX}</p>
+                    <p style={{ color: payload[2].stroke }}>Total GEX: {data.totalGEX}</p>
+                </div>
+            );
+        }
+        return null;
+    };
+
     return (
         <ComposedChart
             layout="vertical"
@@ -15,10 +31,9 @@ const GEXChart = ({data, callWall, putWall, flipPoint}) => {
             }}
         >
             <CartesianGrid stroke="#f5f5f5" />
-            <XAxis type="number" />
+            <XAxis type="number"  />
             <YAxis dataKey="strike" type="category" scale="band" width="auto" />
-            <Tooltip />
-            <Legend />
+            <Tooltip content={<CustomTooltip />}/>
             <Area dataKey="callGEX" fill="#73d867" stroke="#73d867"/>
             <Area dataKey="putGEX" fill="#d86c91" stroke="#d86c91"/>
             <Bar dataKey="totalGEX" barSize={20} fill="#413ea0" />
@@ -30,3 +45,7 @@ const GEXChart = ({data, callWall, putWall, flipPoint}) => {
 };
 
 export default GEXChart;
+
+/*
+style={{ width: "100%", maxHeight: "100vh", aspectRatio: 1 / 1.618 }}
+ */

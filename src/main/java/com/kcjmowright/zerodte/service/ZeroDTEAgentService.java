@@ -94,7 +94,7 @@ public class ZeroDTEAgentService {
   /**
    * Execute the Zero Date Iron Condor Strategy.
    */
-  @Scheduled(cron = "0 * 8-15 * * MON-FRI") // Every minute on weekdays
+  @Scheduled(cron = "*/10 * 8-15 * * MON-FRI") // Every 10 seconds, every minute, every hour between 8 and 15 on weekdays.
   public void executeStrategy() {
     log.info("Executing strategy.  Open order id: {}, Open Positions: {}, Closed Positions: {}",
         openOrderId.get(), openPositionIds.get(), closedPositionIds.get());
@@ -380,30 +380,15 @@ public class ZeroDTEAgentService {
    * and close all positions before the market closes.
    */
   void monitorAndClosePositions() {
-    log.info("Monitoring and closing positions.");
-    LocalTime currentTime = LocalTime.now();
-    if (currentTime.isAfter(CLOSE_TIME.minusMinutes(CLOSE_TIME_MINUTES_BEFORE))) {
+    log.info("Monitoring and possibly closing positions.");
+    if (LocalTime.now().isAfter(CLOSE_TIME.minusMinutes(CLOSE_TIME_MINUTES_BEFORE))) {
       closeRemainingPositions(openPositionIds.get());
     }
-    List<String> callSymbols = openPositionIds.get().stream()
-        .filter(ts -> ts.getType() == InstrumentType.CALL).map(TickerSymbol::getSymbol).toList();
-    if (!callSymbols.isEmpty()) {
-      BigDecimal currentCallLegProfit = calculateCurrentProfitPercentage(callSymbols);
-      log.info("Current call leg profit {}", currentCallLegProfit);
-      if (currentCallLegProfit.compareTo(profitTargetPercent) >= 0
-          || currentCallLegProfit.compareTo(lossLimitPercent.negate()) <= 0) {
-        closeLegs(openPositionIds.get(), InstrumentType.CALL);
-      }
-    }
-    List<String> putSymbols = openPositionIds.get().stream()
-        .filter(ts -> ts.getType() == InstrumentType.PUT).map(TickerSymbol::getSymbol).toList();
-    if (!putSymbols.isEmpty()) {
-      BigDecimal currentPutLegProfit = calculateCurrentProfitPercentage(putSymbols);
-      log.info("Current put leg profit {}", currentPutLegProfit);
-      if (currentPutLegProfit.compareTo(profitTargetPercent) >= 0
-          || currentPutLegProfit.compareTo(lossLimitPercent.negate()) <= 0) {
-        closeLegs(openPositionIds.get(), InstrumentType.PUT);
-      }
+    BigDecimal profitLoss =
+        calculateCurrentProfitPercentage(openPositionIds.get().stream().map(TickerSymbol::getSymbol).toList());
+    if (profitLoss.compareTo(profitTargetPercent) >= 0
+          || profitLoss.compareTo(lossLimitPercent.negate()) <= 0) {
+      closeRemainingPositions(openPositionIds.get());
     }
   }
 
@@ -477,7 +462,7 @@ public class ZeroDTEAgentService {
     BigDecimal mark = switch(quoteResponse) {
       case QuoteResponse.OptionResponse or -> or.getQuote().getMark();
       case QuoteResponse.EquityResponse er -> er.getQuote().getMark();
-      case QuoteResponse.IndexResponse ir -> ir.getQuote().getClosePrice();
+      case QuoteResponse.IndexResponse ir -> ir.getQuote().getLastPrice();
       default -> BigDecimal.ZERO;
     };
     QuoteEntity quote = new QuoteEntity();
@@ -576,7 +561,7 @@ public class ZeroDTEAgentService {
    * Close the remaining positions.
    */
   void closeRemainingPositions(Set<TickerSymbol> symbols) {
-    log.info("Closing remaining positions...");
+    log.info("Closing positions");
     if (simulated) {
       closeSimulatedPositions(symbols);
       return;
