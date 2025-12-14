@@ -91,6 +91,7 @@ docker compose -f docker/docker-compose.yml up -d
 
 ## References
 
+* [Schwab Developer Portal](https://developer.schwab.com/)
 * https://mvnrepository.com/artifact/com.pangility/schwab-api-client
 * https://repo1.maven.org/maven2/com/pangility/schwab-api-client/0.1.6/
 * https://github.com/gporter0205/schwab-api-client?tab=readme-ov-file

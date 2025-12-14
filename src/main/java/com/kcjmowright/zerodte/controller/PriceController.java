@@ -1,8 +1,8 @@
 package com.kcjmowright.zerodte.controller;
 
 import com.kcjmowright.zerodte.model.IronCondorContracts;
-import com.kcjmowright.zerodte.model.QuoteStudyResponse;
-import com.kcjmowright.zerodte.service.QuoteService;
+import com.kcjmowright.zerodte.model.PriceHistoryStudyResponse;
+import com.kcjmowright.zerodte.service.PriceService;
 import com.kcjmowright.zerodte.service.ZeroDTEAgentService;
 import com.pangility.schwab.api.client.accountsandtrading.model.order.Order;
 import com.pangility.schwab.api.client.marketdata.model.chains.OptionChainResponse;
@@ -24,49 +24,26 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 @RequestMapping("/api/v1")
-public class QuoteController {
+public class PriceController {
   private final ZeroDTEAgentService agentService;
-  private final QuoteService quoteService;
+  private final PriceService priceService;
 
-  @GetMapping("/quote")
-  public Mono<QuoteResponse> getQuote(@RequestParam String symbol) {
-    return agentService.getQuote(symbol);
+  @GetMapping("/price")
+  public Mono<QuoteResponse> getPrice(@RequestParam String symbol) {
+    return priceService.getPrice(symbol);
   }
 
   @GetMapping("/price-history/{symbol}")
-  public Mono<QuoteStudyResponse> getPriceHistoryStudy(
+  public Mono<PriceHistoryStudyResponse> getPriceHistoryStudy(
       @PathVariable("symbol") String symbol,
       @RequestParam("startDate") LocalDate startDate,
       @RequestParam("endDate") LocalDate endDate,
-      @RequestParam(name = "granularity", defaultValue = "day") String granularity) {
+      @RequestParam(name = "periodType", defaultValue = "day") PeriodType periodType,
+      @RequestParam(name = "period", defaultValue = "1") Integer period,
+      @RequestParam(name = "frequencyType", defaultValue = "minute") FrequencyType frequencyType,
+      @RequestParam(name = "frequency", defaultValue = "1") Integer frequency) {
 
-    FrequencyType frequencyType;
-    int frequency;
-    PeriodType periodType;
-    int period;
-
-    switch(granularity) {
-      case "week" -> {
-        frequencyType = FrequencyType.weekly;
-        frequency = 1;
-        periodType = PeriodType.month;
-        period = 1;
-      }
-      case "month" -> {
-        frequencyType = FrequencyType.monthly;
-        frequency = 1;
-        periodType = PeriodType.year;
-        period = 1;
-      }
-      default -> {
-        frequencyType = FrequencyType.minute;
-        frequency = 1;
-        periodType = PeriodType.day;
-        period = 1;
-      }
-    }
-
-    return quoteService.getQuoteStudy(
+    return priceService.getPriceHistoryStudy(
         symbol,
         startDate,
         endDate,

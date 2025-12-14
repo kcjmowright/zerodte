@@ -1,11 +1,11 @@
 name: "zerodte"
 
 services:
-  zerodte_apache:
+  zerodte_httpd:
     image: httpd:latest
-    container_name: zerodte-apache
+    container_name: zerodte_httpd
     ports:
-      - "8000:80"
+      - "8080:80"
       - "8443:443"
     volumes:
       # base config
@@ -17,5 +17,5 @@ services:
 
 networks:
   default:
-    name: dev-stack
+    name: zerodte-stack
     driver: bridge

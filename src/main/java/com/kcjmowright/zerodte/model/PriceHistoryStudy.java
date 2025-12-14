@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Data
-public class QuoteStudy {
+public class PriceHistoryStudy {
   private Candle candle;
   private Map<String, BigDecimal> studies = new HashMap<>();
 }

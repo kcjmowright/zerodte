@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Loading from "./Loading.jsx";
 import Alert from "./Alert.jsx";
+import formatters from "./utils/formatters.js";
 
 function Movers() {
     const moverSymbols = [
@@ -109,11 +110,11 @@ function Movers() {
                                                     </td>
                                                 </tr>
                                                 <tr>
-                                                    <td className="border border-gray-300 p-4 text-gray-500 dark:border-gray-700 dark:text-gray-400">{mover.lastPrice}</td>
-                                                    <td className="border border-gray-300 p-4 text-gray-500 dark:border-gray-700 dark:text-gray-400">{mover.netChange}</td>
-                                                    <td className="border border-gray-300 p-4 text-gray-500 dark:border-gray-700 dark:text-gray-400">{mover.netPercentChange}</td>
-                                                    <td className="border border-gray-300 p-4 text-gray-500 dark:border-gray-700 dark:text-gray-400">{mover.totalVolume}</td>
-                                                    <td className="border border-gray-300 p-4 text-gray-500 dark:border-gray-700 dark:text-gray-400">{mover.volume}</td>
+                                                    <td className="border border-gray-300 p-4 text-gray-500 dark:border-gray-700 dark:text-gray-400">{formatters.currency.format(mover.lastPrice)}</td>
+                                                    <td className="border border-gray-300 p-4 text-gray-500 dark:border-gray-700 dark:text-gray-400">{formatters.currency.format(mover.netChange)}</td>
+                                                    <td className="border border-gray-300 p-4 text-gray-500 dark:border-gray-700 dark:text-gray-400">{formatters.percentage.format(mover.netPercentChange / 100.0)}</td>
+                                                    <td className="border border-gray-300 p-4 text-gray-500 dark:border-gray-700 dark:text-gray-400">{formatters.number.format(mover.totalVolume)}</td>
+                                                    <td className="border border-gray-300 p-4 text-gray-500 dark:border-gray-700 dark:text-gray-400">{formatters.number.format(mover.volume)}</td>
                                                     <td className="border border-gray-300 p-4 text-gray-500 dark:border-gray-700 dark:text-gray-400">{mover.marketShare}</td>
                                                     <td className="border border-gray-300 p-4 text-gray-500 dark:border-gray-700 dark:text-gray-400">{mover.trades}</td>
                                                 </tr>

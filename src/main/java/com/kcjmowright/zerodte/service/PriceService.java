@@ -1,26 +1,31 @@
 package com.kcjmowright.zerodte.service;
 
-import com.kcjmowright.zerodte.model.QuoteStudy;
-import com.kcjmowright.zerodte.model.QuoteStudyResponse;
+import com.kcjmowright.zerodte.model.PriceHistoryStudy;
+import com.kcjmowright.zerodte.model.PriceHistoryStudyResponse;
 import com.pangility.schwab.api.client.marketdata.SchwabMarketDataApiClient;
 import com.pangility.schwab.api.client.marketdata.model.pricehistory.FrequencyType;
 import com.pangility.schwab.api.client.marketdata.model.pricehistory.PeriodType;
 import com.pangility.schwab.api.client.marketdata.model.pricehistory.PriceHistoryRequest;
-import com.pangility.schwab.api.client.marketdata.model.pricehistory.PriceHistoryResponse;
-import com.pangility.schwab.api.client.marketdata.model.quotes.Quote;
+import com.pangility.schwab.api.client.marketdata.model.quotes.QuoteResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
 import java.time.LocalDate;
 import java.util.Collection;
 
 @Service
 @RequiredArgsConstructor
-public class QuoteService {
+public class PriceService {
   private final SchwabMarketDataApiClient marketDataClient;
 
-  public Mono<QuoteStudyResponse> getQuoteStudy(
+  public Mono<QuoteResponse> getPrice(String symbol) {
+    return marketDataClient.fetchQuoteToMono(symbol)
+        .retryWhen(Retry.backoff(3, java.time.Duration.ofSeconds(2)));
+  }
+
+  public Mono<PriceHistoryStudyResponse> getPriceHistoryStudy(
       String symbol,
       LocalDate startDate,
       LocalDate endDate,
@@ -41,14 +46,14 @@ public class QuoteService {
 
     return marketDataClient.fetchPriceHistoryToMono(req)
         .handle((response, sink) -> {
-          QuoteStudyResponse quotesStudyResponse = new QuoteStudyResponse();
+          PriceHistoryStudyResponse quotesStudyResponse = new PriceHistoryStudyResponse();
           quotesStudyResponse.setSymbol(symbol);
           var l = response.getCandles().stream().map(c -> {
-            QuoteStudy quoteStudy = new QuoteStudy();
-            quoteStudy.setCandle(c);
-            return quoteStudy;
+            PriceHistoryStudy priceHistoryStudy = new PriceHistoryStudy();
+            priceHistoryStudy.setCandle(c);
+            return priceHistoryStudy;
           }).toList();
-          quotesStudyResponse.setQuoteStudies(l);
+          quotesStudyResponse.setPriceHistoryStudies(l);
           sink.next(quotesStudyResponse);
         });
   }

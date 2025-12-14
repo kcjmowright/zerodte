@@ -10,6 +10,7 @@ import com.pangility.schwab.api.client.oauth2.SchwabTokenHandler;
 import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import reactor.util.retry.Retry;
@@ -21,6 +22,7 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 @EnableSchwabApi
+@Slf4j
 public class SchwabApiClientTokenService implements SchwabTokenHandler {
   private final SessionRepository sessionRepository;
   private final SchwabAccountsAndTradingApiClient accountsAndTradingClient;
@@ -88,14 +90,17 @@ public class SchwabApiClientTokenService implements SchwabTokenHandler {
     if (!(accountsAndTradingClient.isInitialized() && marketDataClient.isInitialized())) {
       List<SessionEntity> sessions = sessionRepository.findAll();
       SchwabAccount schwabAccount = new SchwabAccount();
-//      schwabAccount.setUserId(userId);
       if (!sessions.isEmpty()) {
+        log.warn("Using existing session");
         SessionEntity session = sessions.getFirst();
         schwabAccount.setAccessToken(session.getToken());
         schwabAccount.setAccessExpiration(session.getAccessExpiration());
         schwabAccount.setRefreshToken(session.getRefreshToken());
         schwabAccount.setRefreshExpiration(session.getRefreshExpiration());
         schwabAccount.setUserId(session.getUsername());
+      } else {
+        log.warn("No existing session");
+        schwabAccount.setUserId(userId);
       }
       if (!accountsAndTradingClient.isInitialized()) {
         accountsAndTradingClient.init(schwabAccount, this);

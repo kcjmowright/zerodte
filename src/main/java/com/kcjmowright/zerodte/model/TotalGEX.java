@@ -63,7 +63,9 @@ public class TotalGEX {
             .add(GammaExposure.callGEX(contract.getGamma(), contract.getOpenInterest(), spotPrice)));
         totalGEX.setTotalCallGEX(totalGEX.getTotalCallGEX().add(optionContractGEX.getCallGEX()));
       }
+      optionContractGEX.setOpenInterest(optionContractGEX.getOpenInterest().add(contract.getOpenInterest()));
       optionContractGEX.setTotalGEX(optionContractGEX.getCallGEX().add(optionContractGEX.getPutGEX()));
+      optionContractGEX.setAbsoluteGEX(optionContractGEX.getCallGEX().add(optionContractGEX.getPutGEX().abs()));
       if (optionContractGEX.getTotalGEX().compareTo(BigDecimal.ZERO) == 0
         && optionContractGEX.getCallGEX().compareTo(BigDecimal.ZERO) == 0
         && optionContractGEX.getPutGEX().compareTo(BigDecimal.ZERO) == 0) {

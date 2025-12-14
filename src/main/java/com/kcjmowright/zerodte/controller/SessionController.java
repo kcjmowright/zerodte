@@ -32,6 +32,10 @@ public class SessionController {
       return ResponseEntity.ok().body(status);
     }
     SessionEntity session = sessionService.findByUsername(username);
+    if (session == null) {
+      SessionStatus status = new SessionStatus(null, null, true);
+      return ResponseEntity.ok().body(status);
+    }
     SessionStatus status = new SessionStatus(session.getUsername(), session.getRefreshExpiration(),
         session.getRefreshExpiration().isBefore(LocalDateTime.now()));
     if (status.getExpired() == Boolean.FALSE) {

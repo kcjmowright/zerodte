@@ -3,6 +3,8 @@ import Alert from "./Alert.jsx";
 import Loading from "./Loading.jsx";
 import GEXChart from "./GEXChart.jsx";
 import CandleStickChart from "./CandleStickChart.jsx";
+import SmallCheckboxButton from "./SmallCheckboxButton.jsx";
+import formatters from "./utils/formatters.js";
 
 function GammaExposure() {
     const [quote, setQuote] = useState(null);
@@ -12,32 +14,41 @@ function GammaExposure() {
     const [loading, setLoading] = useState(0);
     const [error, setError] = useState(null);
     const [selectedExpDates, setSelectedExpDates] = useState(getInitialExpDates());
-    const [quoteStudies, setQuoteStudies] = useState(null);
+    const [priceHistoryStudies, setPriceHistoryStudies] = useState(null);
+    const today = new Date();
+    const oneWeekAgo = new Date(today);
+    oneWeekAgo.setDate(today.getDate() - 7);
+    const [startDate, setStartDate] = useState(oneWeekAgo.toISOString().split("T")[0]);
+    const [endDate, setEndDate] = useState(today.toISOString().split("T")[0]);
+    const [showPutGEX, setShowPutGEX] = useState(true);
+    const [showCallGEX, setShowCallGEX] = useState(true);
+    const [showAbsoluteGEX, setShowAbsoluteGEX] = useState(false);
+    const [showOpenInterest, setShowOpenInterest] = useState(false);
 
     function getInitialExpDates() {
-        const today = new Date();
         const dates = [];
 
-        // Today's date
-        dates.push(today.toISOString().split('T')[0]);
+        const startDay = new Date();
+        if (startDay.getDay() === 0) {
+            startDay.setDate(startDay.getDate() + 1);
+        } else if (startDay.getDay() === 6) {
+            startDay.setDate(startDay.getDate() + 1);
+        }
+        dates.push(startDay.toISOString().split('T')[0]);
 
-        // Tomorrow's date
-        const tomorrow = new Date(today);
-        tomorrow.setDate(today.getDate() + 1);
-        dates.push(tomorrow.toISOString().split('T')[0]);
+        const nextDay = new Date(startDay);
+        nextDay.setDate(startDay.getDate() + 1);
+        dates.push(nextDay.toISOString().split('T')[0]);
 
-        // This Friday
-        const thisFriday = new Date(today);
-        const daysUntilFriday = (5 - today.getDay() + 7) % 7;
-        thisFriday.setDate(today.getDate() + (daysUntilFriday || 7));
+        const thisFriday = new Date(startDay);
+        const daysUntilFriday = (5 - startDay.getDay() + 7) % 7;
+        thisFriday.setDate(startDay.getDate() + (daysUntilFriday || 7));
         dates.push(thisFriday.toISOString().split('T')[0]);
 
-        // 3rd Friday of this month
-        const thirdFridayThisMonth = getNthFriday(today.getFullYear(), today.getMonth(), 3);
+        const thirdFridayThisMonth = getNthFriday(startDay.getFullYear(), startDay.getMonth(), 3);
         dates.push(thirdFridayThisMonth.toISOString().split('T')[0]);
 
-        // 3rd Friday of next month
-        const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+        const nextMonth = new Date(startDay.getFullYear(), startDay.getMonth() + 1, 1);
         const thirdFridayNextMonth = getNthFriday(nextMonth.getFullYear(), nextMonth.getMonth(), 3);
         dates.push(thirdFridayNextMonth.toISOString().split('T')[0]);
 
@@ -77,13 +88,13 @@ function GammaExposure() {
         }
     }
 
-    async function fetchCurrentQuoteData(symbol) {
+    async function fetchCurrentPriceData(symbol) {
         if (!symbol) {
             return;
         }
         try {
             setLoading(prev => prev + 1);
-            const response = await fetch(`/api/v1/quote?symbol=${symbol}`);
+            const response = await fetch(`/api/v1/price?symbol=${symbol}`);
             if (!response.ok) {
                 const e = await response.json();
                 throw new Error(`${e.message}`);
@@ -117,7 +128,7 @@ function GammaExposure() {
         }
     }
 
-    async function fetchQuoteStudies(symbol, startDate, endDate) {
+    async function fetchPriceHistoryStudy(symbol, startDate, endDate) {
         if (!symbol) {
             return;
         }
@@ -130,7 +141,7 @@ function GammaExposure() {
                 throw new Error(`${e.message}`);
             }
             const result = await response.json();
-            setQuoteStudies(result.quoteStudies);
+            setPriceHistoryStudies(result.priceHistoryStudies);
         } catch (error) {
             setError(error);
         } finally {
@@ -138,13 +149,13 @@ function GammaExposure() {
         }
     }
 
-    async function submitForm(formData) {
+    function submitForm(formData) {
         setError(null);
         let symbol = formData.get("symbol").toUpperCase();
         setSelectedSymbol(symbol);
     }
 
-    async function handleExpirationDates(event) {
+    function handleExpirationDates(event) {
         let expDates = Array.from(event.target.selectedOptions).map(
             option => option.value
         );
@@ -154,23 +165,17 @@ function GammaExposure() {
     useEffect(() => {
         (async () => {
             await fetchGEXData(selectedSymbol, selectedExpDates);
-            await fetchCurrentQuoteData(selectedSymbol);
+            await fetchCurrentPriceData(selectedSymbol);
+            await fetchPriceHistoryStudy(selectedSymbol, startDate, endDate);
         })();
     }, [selectedExpDates]);
 
     useEffect(() => {
         (async () => {
             setGEX(null);
-            setLoading(0);
-            await fetchCurrentQuoteData(selectedSymbol)
+            setQuote(null);
+            setSelectedExpDates(getInitialExpDates());
             await fetchOptionExpirationDates(selectedSymbol);
-            await fetchGEXData(selectedSymbol, selectedExpDates);
-            const today = new Date();
-            const oneWeekAgo = new Date(today);
-            oneWeekAgo.setDate(today.getDate() - 7);
-            const startDate = oneWeekAgo.toISOString().split("T")[0];
-            const endDate = today.toISOString().split("T")[0]
-            await fetchQuoteStudies(selectedSymbol, startDate, endDate);
         })();
     }, [selectedSymbol]);
 
@@ -211,15 +216,15 @@ function GammaExposure() {
                                     <h2 className="text-2xl font-bold tracking-tight text-gray-900 mb-4">{quote.reference.description} ({quote.symbol})</h2>
                                     <dl className="flex gap-4 items-center">
                                         <dt className="font-semibold">Last:</dt>
-                                        <dd>{quote.quote.lastPrice}</dd>
+                                        <dd>{formatters.currency.format(quote.quote.lastPrice)}</dd>
                                         <dt className="font-semibold">Close:</dt>
-                                        <dd>{quote.quote.closePrice}</dd>
+                                        <dd>{formatters.currency.format(quote.quote.closePrice)}</dd>
                                         <dt className="font-semibold">Net Change:</dt>
-                                        <dd>{quote.quote.netChange}</dd>
+                                        <dd>{formatters.currency.format(quote.quote.netChange)}</dd>
                                         <dt className="font-semibold">Percent Change:</dt>
-                                        <dd>{quote.quote.netPercentChange}</dd>
+                                        <dd>{formatters.percentage.format(quote.quote.netPercentChange / 100.0)}</dd>
                                         <dt className="font-semibold">Volume:</dt>
-                                        <dd>{quote.quote.totalVolume}</dd>
+                                        <dd>{formatters.number.format(quote.quote.totalVolume)}</dd>
                                     </dl>
                                     <div className="flex gap-4">
                                         <label className="font-semibold">Expiration Dates:</label>
@@ -238,54 +243,68 @@ function GammaExposure() {
                                               ))
                                             }
                                         </select>
+                                        <SmallCheckboxButton
+                                            id="showCallGEX"
+                                            checked={showCallGEX}
+                                            label={showCallGEX ? "Hide Call GEX" : "Show Call GEX"}
+                                            onChange={(e) => setShowCallGEX(e.target.checked)} />
+                                        <SmallCheckboxButton
+                                            id="showPutGEX"
+                                            checked={showPutGEX}
+                                            label={showPutGEX ? "Hide Put GEX" : "Show Put GEX"}
+                                            onChange={(e) => setShowPutGEX(e.target.checked)} />
+                                        <SmallCheckboxButton
+                                            id="showAbsoluteGEX"
+                                            checked={showAbsoluteGEX}
+                                            label={showAbsoluteGEX ? "Hide Absolute GEX" : "Show Absolute GEX"}
+                                            onChange={(e) => setShowAbsoluteGEX(e.target.checked)} />
+                                        <SmallCheckboxButton
+                                            id="showOpenInterest"
+                                            checked={showOpenInterest}
+                                            label={showOpenInterest ? "Hide Open Interest" : "Show Open Interest"}
+                                            onChange={(e) => setShowOpenInterest(e.target.checked)} />
                                     </div>
                                     {
                                         (() => {
                                             if (!gex && loading > 0) {
-                                                return <Loading />;
+                                                return <Loading/>;
                                             }
                                             if (!gex) {
                                                 return <></>;
                                             }
                                             return <dl className="flex gap-4 items-center">
                                                 <dt className="font-semibold">Total Call GEX:</dt>
-                                                <dd>{gex.totalCallGEX}</dd>
+                                                <dd>{formatters.number.format(gex.totalCallGEX)}</dd>
                                                 <dt className="font-semibold">Total Put GEX:</dt>
-                                                <dd>{gex.totalPutGEX}</dd>
+                                                <dd>{formatters.number.format(gex.totalPutGEX)}</dd>
                                                 <dt className="font-semibold">Total GEX:</dt>
-                                                <dd>{gex.totalGEX}</dd>
+                                                <dd>{formatters.number.format(gex.totalGEX)}</dd>
                                                 <dt className="font-semibold">Call Wall</dt>
-                                                <dd>{gex.callWall}</dd>
+                                                <dd>{formatters.number.format(gex.callWall)}</dd>
                                                 <dt className="font-semibold">Put Wall</dt>
-                                                <dd>{gex.putWall}</dd>
+                                                <dd>{formatters.number.format(gex.putWall)}</dd>
                                                 <dt className="font-semibold">Flip Point</dt>
-                                                <dd>{gex.flipPoint}</dd>
+                                                <dd>{formatters.number.format(gex.flipPoint)}</dd>
                                             </dl>
                                         })()
                                     }
                                 </div>
-                                {
-                                    (() => {
-                                        if (!gex) {
-                                            return <></>;
-                                        }
-                                        return <div className="grid grid-cols-[70%_30%] items-start">
-                                            { quoteStudies && <CandleStickChart quoteStudies={quoteStudies} /> }
-                                            <GEXChart data={Object.values(gex.gexPerStrike)} callWall={gex.callWall} putWall={gex.putWall} flipPoint={gex.flipPoint} />
-                                        </div>
-                                    })()
+                                { gex && <GEXChart
+                                    data={Object.values(gex.gexPerStrike)}
+                                    callWall={gex.callWall}
+                                    putWall={gex.putWall}
+                                    flipPoint={gex.flipPoint}
+                                    showCallGEX={showCallGEX}
+                                    showPutGEX={showPutGEX}
+                                    showAbsoluteGEX={showAbsoluteGEX}
+                                    showOpenInterest={showOpenInterest} />
                                 }
+                                { priceHistoryStudies && <CandleStickChart quoteStudies={priceHistoryStudies} /> }
                             </>;
                         })()
                     }
                 </div>
-                {
-                    (() => {
-                        if (error) {
-                            return <Alert message={error.message} />;
-                        }
-                    })()
-                }
+                {error && <Alert message={error.message} />}
             </main>
         </>
     );

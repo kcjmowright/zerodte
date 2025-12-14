@@ -5,7 +5,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class QuoteStudyResponse {
+public class PriceHistoryStudyResponse {
   private String symbol;
-  private List<QuoteStudy> quoteStudies;
+  private List<PriceHistoryStudy> priceHistoryStudies;
 }
