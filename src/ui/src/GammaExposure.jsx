@@ -294,6 +294,7 @@ function GammaExposure() {
                                     callWall={gex.callWall}
                                     putWall={gex.putWall}
                                     flipPoint={gex.flipPoint}
+                                    spotPrice={quote.quote.lastPrice}
                                     showCallGEX={showCallGEX}
                                     showPutGEX={showPutGEX}
                                     showAbsoluteGEX={showAbsoluteGEX}
