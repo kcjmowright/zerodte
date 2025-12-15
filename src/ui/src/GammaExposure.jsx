@@ -15,22 +15,61 @@ function GammaExposure() {
     const [error, setError] = useState(null);
     const [selectedExpDates, setSelectedExpDates] = useState(getInitialExpDates());
     const [priceHistoryStudies, setPriceHistoryStudies] = useState(null);
-    const today = new Date();
-    const oneWeekAgo = new Date(today);
-    oneWeekAgo.setDate(today.getDate() - 7);
-    const [startDate, setStartDate] = useState(oneWeekAgo.toISOString().split("T")[0]);
-    const [endDate, setEndDate] = useState(today.toISOString().split("T")[0]);
+    const [chartStartDay, chartEndDay] = getChartDates();
+    const [startDate, setStartDate] = useState(chartStartDay);
+    const [endDate, setEndDate] = useState(chartEndDay);
     const [showPutGEX, setShowPutGEX] = useState(true);
+    const [showPutVolume, setShowPutVolume] = useState(false);
     const [showCallGEX, setShowCallGEX] = useState(true);
+    const [showCallVolume, setShowCallVolume] = useState(false);
     const [showAbsoluteGEX, setShowAbsoluteGEX] = useState(false);
     const [showOpenInterest, setShowOpenInterest] = useState(false);
 
+    /**
+     * Find initial date range for stock chart.
+     * @returns {*[]}
+     */
+    function getChartDates() {
+        const dates = [];
+        const startDay = new Date();
+        const endDay = new Date();
+        switch (startDay.getDay()) {
+            case 0:
+                startDay.setDate(startDay.getDate() - 2);
+                endDay.setDate(startDay.getDate());
+                break;
+            case 1:
+                startDay.setDate(startDay.getDate() - 3);
+                break;
+            case 6:
+                startDay.setDate(startDay.getDate() - 1);
+                endDay.setDate(startDay.getdate());
+                break;
+            default:
+                startDay.setDate(startDay.getDate() - 1);
+        }
+        dates.push(startDay.toISOString().split('T')[0]);
+        dates.push(endDay.toISOString().split('T')[0]);
+        return dates;
+    }
+
+    /**
+     * Find initial expiration dates.
+     * <ul>
+     *   <li>The closest trading day.
+     *   <li>The following trading day to the closest.
+     *   <li>The closest Friday.
+     *   <li>The third Friday of this month.
+     *   <li>The third Friday of next month.
+     * </ul>
+     * @returns {*[]} an array of expiration dates.
+     */
     function getInitialExpDates() {
         const dates = [];
 
         const startDay = new Date();
         if (startDay.getDay() === 0) {
-            startDay.setDate(startDay.getDate() + 1);
+            startDay.setDate(startDay.getDate());
         } else if (startDay.getDay() === 6) {
             startDay.setDate(startDay.getDate() + 1);
         }
@@ -51,7 +90,7 @@ function GammaExposure() {
         const nextMonth = new Date(startDay.getFullYear(), startDay.getMonth() + 1, 1);
         const thirdFridayNextMonth = getNthFriday(nextMonth.getFullYear(), nextMonth.getMonth(), 3);
         dates.push(thirdFridayNextMonth.toISOString().split('T')[0]);
-
+        console.log(`Initial Dates: ${dates}`);
         return dates;
     }
 
@@ -263,6 +302,16 @@ function GammaExposure() {
                                             checked={showOpenInterest}
                                             label={showOpenInterest ? "Hide Open Interest" : "Show Open Interest"}
                                             onChange={(e) => setShowOpenInterest(e.target.checked)} />
+                                        <SmallCheckboxButton
+                                            id="showCallVolume"
+                                            checked={showCallVolume}
+                                            label={showCallVolume ? "Hide Call Volume" : "Show Call Volume"}
+                                            onChange={(e) => setShowCallVolume(e.target.checked)} />
+                                        <SmallCheckboxButton
+                                            id="showPutVolume"
+                                            checked={showPutVolume}
+                                            label={showPutVolume ? "Hide Put Volume" : "Show Put Volume"}
+                                            onChange={(e) => setShowPutVolume(e.target.checked)} />
                                     </div>
                                     {
                                         (() => {
@@ -290,15 +339,17 @@ function GammaExposure() {
                                     }
                                 </div>
                                 { gex && <GEXChart
-                                    data={Object.values(gex.gexPerStrike)}
                                     callWall={gex.callWall}
-                                    putWall={gex.putWall}
+                                    data={Object.values(gex.gexPerStrike)}
                                     flipPoint={gex.flipPoint}
-                                    spotPrice={quote.quote.lastPrice}
-                                    showCallGEX={showCallGEX}
-                                    showPutGEX={showPutGEX}
+                                    putWall={gex.putWall}
                                     showAbsoluteGEX={showAbsoluteGEX}
-                                    showOpenInterest={showOpenInterest} />
+                                    showCallGEX={showCallGEX}
+                                    showCallVolume={showCallVolume}
+                                    showOpenInterest={showOpenInterest}
+                                    showPutGEX={showPutGEX}
+                                    showPutVolume={showPutVolume}
+                                    spotPrice={quote.quote.lastPrice} />
                                 }
                                 { priceHistoryStudies && <CandleStickChart quoteStudies={priceHistoryStudies} /> }
                             </>;

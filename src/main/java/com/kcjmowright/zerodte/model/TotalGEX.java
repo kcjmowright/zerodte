@@ -54,6 +54,8 @@ public class TotalGEX {
         }
         optionContractGEX.setPutGEX(optionContractGEX.getPutGEX()
             .add(GammaExposure.putGEX(contract.getGamma(), contract.getOpenInterest(), spotPrice)));
+        optionContractGEX.setPutVolume(optionContractGEX.getPutVolume()
+            .add(BigDecimal.valueOf(contract.getTotalVolume())));
         totalGEX.setTotalPutGEX(totalGEX.getTotalPutGEX().add(optionContractGEX.getPutGEX()));
       } else { // CALLs
         if (!suppressDetails) {
@@ -61,6 +63,8 @@ public class TotalGEX {
         }
         optionContractGEX.setCallGEX(optionContractGEX.getCallGEX()
             .add(GammaExposure.callGEX(contract.getGamma(), contract.getOpenInterest(), spotPrice)));
+        optionContractGEX.setCallVolume(optionContractGEX.getCallVolume()
+            .add(BigDecimal.valueOf(contract.getTotalVolume())));
         totalGEX.setTotalCallGEX(totalGEX.getTotalCallGEX().add(optionContractGEX.getCallGEX()));
       }
       optionContractGEX.setOpenInterest(optionContractGEX.getOpenInterest().add(contract.getOpenInterest()));

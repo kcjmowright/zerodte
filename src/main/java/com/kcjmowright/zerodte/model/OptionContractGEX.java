@@ -20,6 +20,8 @@ public class OptionContractGEX implements Comparable<OptionContractGEX> {
   private BigDecimal totalGEX = BigDecimal.ZERO;
   private BigDecimal absoluteGEX = BigDecimal.ZERO;
   private BigDecimal openInterest =  BigDecimal.ZERO;
+  private BigDecimal callVolume = BigDecimal.ZERO;
+  private BigDecimal putVolume = BigDecimal.ZERO;
 
   @Override
   public int compareTo(OptionContractGEX o) {
