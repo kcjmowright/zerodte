@@ -27,16 +27,16 @@ public class PriceService {
 
   public Mono<PriceHistoryStudyResponse> getPriceHistoryStudy(
       String symbol,
-      LocalDate startDate,
-      LocalDate endDate,
+      LocalDate start,
+      LocalDate end,
       FrequencyType frequencyType,
       Integer frequency,
       PeriodType periodType,
       Integer period,
       Collection<String> studies) {
     PriceHistoryRequest req = PriceHistoryRequest.builder()
-        .withStartDate(startDate)
-        .withEndDate(endDate)
+        .withStartDate(start)
+        .withEndDate(end)
         .withSymbol(symbol)
         .withFrequencyType(frequencyType)
         .withFrequency(frequency)

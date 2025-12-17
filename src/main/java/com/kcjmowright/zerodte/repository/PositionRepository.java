@@ -2,7 +2,7 @@ package com.kcjmowright.zerodte.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import com.kcjmowright.zerodte.model.PositionEntity;
+import com.kcjmowright.zerodte.model.entity.PositionEntity;
 
 import java.time.LocalDateTime;
 import java.util.Collection;

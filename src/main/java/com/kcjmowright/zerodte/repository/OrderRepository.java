@@ -2,7 +2,7 @@ package com.kcjmowright.zerodte.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import com.kcjmowright.zerodte.model.OrderEntity;
+import com.kcjmowright.zerodte.model.entity.OrderEntity;
 
 import java.util.List;
 

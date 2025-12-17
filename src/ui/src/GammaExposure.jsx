@@ -90,7 +90,6 @@ function GammaExposure() {
         const nextMonth = new Date(startDay.getFullYear(), startDay.getMonth() + 1, 1);
         const thirdFridayNextMonth = getNthFriday(nextMonth.getFullYear(), nextMonth.getMonth(), 3);
         dates.push(thirdFridayNextMonth.toISOString().split('T')[0]);
-        console.log(`Initial Dates: ${dates}`);
         return dates;
     }
 
@@ -167,13 +166,13 @@ function GammaExposure() {
         }
     }
 
-    async function fetchPriceHistoryStudy(symbol, startDate, endDate) {
+    async function fetchPriceHistoryStudy(symbol, start, end) {
         if (!symbol) {
             return;
         }
         try {
             setLoading(prev => prev + 1);
-            const url = `/api/v1/price-history/${symbol}?startDate=${startDate}&endDate=${endDate}`;
+            const url = `/api/v1/price-history/${symbol}?start=${start}&end=${end}`;
             const response = await fetch(url);
             if (!response.ok) {
                 const e = await response.json();
@@ -250,11 +249,13 @@ function GammaExposure() {
                             if (!quote) {
                                 return <div></div>;
                             }
+                            const quoteTime = new Date();
+                            quoteTime.setTime(quote.quote.quoteTime);
                             return <>
                                 <div>
                                     <h2 className="text-2xl font-bold tracking-tight text-gray-900 mb-4">{quote.reference.description} ({quote.symbol})</h2>
                                     <dl className="flex gap-4 items-center">
-                                        <dt className="font-semibold">Last:</dt>
+                                        <dt className="font-semibold">Last (as of {quoteTime.toLocaleString()}):</dt>
                                         <dd>{formatters.currency.format(quote.quote.lastPrice)}</dd>
                                         <dt className="font-semibold">Close:</dt>
                                         <dd>{formatters.currency.format(quote.quote.closePrice)}</dd>

@@ -34,7 +34,7 @@ const GEXChart = ({data, spotPrice, callWall, putWall, flipPoint, showPutGEX, sh
                     {showAbsoluteGEX && <p style={{ color: colors.absoluteGEX }}>Absolute GEX: {formatters.number.format(data.absoluteGEX)}</p>}
                     {showOpenInterest && <p style={{ color: colors.openInterest }}>Open Interest: {formatters.number.format(data.openInterest)}</p>}
                     {showCallVolume && <p style={{ color: colors.callVolume }}>Call Volume: {formatters.number.format(data.callVolume)}</p>}
-                    {showPutVolume && <p style={{ color: colors.putVolume }}>Open Interest: {formatters.number.format(data.putVolume)}</p>}
+                    {showPutVolume && <p style={{ color: colors.putVolume }}>Put Volume: {formatters.number.format(data.putVolume)}</p>}
                     <p style={{ color: colors.totalGEX }}>Total GEX: {formatters.number.format(data.totalGEX)}</p>
                 </div>
             );

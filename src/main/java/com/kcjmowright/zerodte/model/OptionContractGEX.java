@@ -1,6 +1,7 @@
 package com.kcjmowright.zerodte.model;
 
 import com.pangility.schwab.api.client.marketdata.model.chains.OptionContract;
+import jakarta.persistence.Transient;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;

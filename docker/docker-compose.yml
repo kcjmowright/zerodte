@@ -5,7 +5,7 @@ services:
     image: httpd:latest
     container_name: zerodte_httpd
     ports:
-      - "8080:80"
+      - "7080:80"
       - "8443:443"
     volumes:
       # base config

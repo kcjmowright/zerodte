@@ -16,6 +16,8 @@ Resistance is the call wall and the highest absolute GEX above the current strik
 
 ### Scenario 1
 
+#### Scenario 1 Description
+
 Price opens in positive gamma territory, above the flip point on the positive side.
 Positive GEX significantly exceeds negative GEXd
 Below the spot price is a column of prominent positive GEX and a surge of absolute GEX
@@ -24,7 +26,7 @@ that price will not fall elow this level, its identified as a level of support.
 Maximum positive GEX is above the current spot price and is identified as a prominent
 level of resistence.
 
-Action: 
+#### Scenario 1 Action
 
 Wait until 8:45. if price is moving toward support, wait until it reaches the suppoort level
 and take a bullish put credit spread.  If the price is at resistence, take an iron condor credit spread
@@ -36,5 +38,7 @@ Close the position 10 minutes before close or once it reaches the resistence lev
 ### Scenario 2
 
 The day starts with the spot price at absolute GEX and the call wall.  The spot price is surrounded by positive GEX. 
-GEX is in a declining slope at strikes above the spot price until it doesn't which become the most
-likely resistence point for the day.
+GEX is in a declining slope at strikes above the spot price but there is a surge in GEX at a higher strike which is
+likely a resistence point for the day.
+
+Action

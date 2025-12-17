@@ -1,8 +1,9 @@
-package com.kcjmowright.zerodte.model;
+package com.kcjmowright.zerodte.model.entity;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+import com.kcjmowright.zerodte.model.InstrumentType;
 import lombok.Data;
 import lombok.ToString;
 
@@ -14,31 +15,34 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "orders")
+@Table(name = "position")
 @Data
 @ToString
-public class OrderEntity {
+public class PositionEntity {
 
   @Id
-  @Column
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @GeneratedValue( strategy = GenerationType.IDENTITY)
+  @Column(name = "id")
   private Long id;
-
-  @Column(name = "orderid")
-  private Long orderId;
 
   @Column(name = "symbol")
   private String symbol;
 
+  @Column(name = "type")
+  private InstrumentType type;
+
   @Column(name = "quantity")
   private BigDecimal quantity;
 
-  @Column(name = "type")
-  private InstrumentType type;
+  @Column(name = "purchaseprice")
+  private BigDecimal purchasePrice;
+
+  @Column(name = "sellprice")
+  private BigDecimal sellPrice;
 
   @Column(name = "created")
   private LocalDateTime created;
 
-  @Column(name = "filled")
-  private LocalDateTime filled;
+  @Column(name = "closed")
+  private LocalDateTime closed;
 }

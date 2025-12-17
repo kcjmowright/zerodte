@@ -1,6 +1,6 @@
 package com.kcjmowright.zerodte.controller;
 
-import com.kcjmowright.zerodte.model.SessionEntity;
+import com.kcjmowright.zerodte.model.entity.SessionEntity;
 import com.kcjmowright.zerodte.model.SessionStatus;
 import com.kcjmowright.zerodte.service.SessionService;
 import lombok.RequiredArgsConstructor;

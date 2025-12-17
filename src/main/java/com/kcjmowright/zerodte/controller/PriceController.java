@@ -36,8 +36,8 @@ public class PriceController {
   @GetMapping("/price-history/{symbol}")
   public Mono<PriceHistoryStudyResponse> getPriceHistoryStudy(
       @PathVariable("symbol") String symbol,
-      @RequestParam("startDate") LocalDate startDate,
-      @RequestParam("endDate") LocalDate endDate,
+      @RequestParam("start") LocalDate start,
+      @RequestParam("end") LocalDate end,
       @RequestParam(name = "periodType", defaultValue = "day") PeriodType periodType,
       @RequestParam(name = "period", defaultValue = "1") Integer period,
       @RequestParam(name = "frequencyType", defaultValue = "minute") FrequencyType frequencyType,
@@ -45,8 +45,8 @@ public class PriceController {
 
     return priceService.getPriceHistoryStudy(
         symbol,
-        startDate,
-        endDate,
+        start,
+        end,
         frequencyType,
         frequency,
         periodType,

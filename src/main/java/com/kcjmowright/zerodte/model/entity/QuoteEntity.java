@@ -1,4 +1,4 @@
-package com.kcjmowright.zerodte.model;
+package com.kcjmowright.zerodte.model.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;

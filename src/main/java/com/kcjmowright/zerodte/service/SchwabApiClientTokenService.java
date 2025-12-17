@@ -1,6 +1,6 @@
 package com.kcjmowright.zerodte.service;
 
-import com.kcjmowright.zerodte.model.SessionEntity;
+import com.kcjmowright.zerodte.model.entity.SessionEntity;
 import com.kcjmowright.zerodte.repository.SessionRepository;
 import com.pangility.schwab.api.client.accountsandtrading.SchwabAccountsAndTradingApiClient;
 import com.pangility.schwab.api.client.common.EnableSchwabApi;
