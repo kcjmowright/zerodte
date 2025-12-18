@@ -1,5 +1,6 @@
 package com.kcjmowright.zerodte.service;
 
+import com.kcjmowright.zerodte.model.OptionContractGEX;
 import com.kcjmowright.zerodte.model.TotalGEX;
 import com.kcjmowright.zerodte.model.entity.TotalGEXEntity;
 import com.kcjmowright.zerodte.repository.TotalGEXRepository;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -22,6 +24,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Stream;
 
 @Service
@@ -93,6 +96,12 @@ public class GammaExposureService {
   }
 
   public Mono<TotalGEX> getTotalGEXCapture(String symbol, LocalDateTime created) {
-    return Mono.just(totalGEXRepository.findBySymbolAndCreated(symbol, created).getData());
+    return Mono.fromCallable(() -> totalGEXRepository.findBySymbolAndCreated(symbol, created).getData())
+        .map(totalGEX -> {
+          TreeMap<BigDecimal, OptionContractGEX> sortedMap = new TreeMap<>(Comparator.reverseOrder());
+          sortedMap.putAll(totalGEX.getGexPerStrike());
+          totalGEX.setGexPerStrike(sortedMap);
+          return totalGEX;
+        });
   }
 }

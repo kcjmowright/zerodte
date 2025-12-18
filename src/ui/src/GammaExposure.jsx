@@ -5,8 +5,10 @@ import GEXChart from "./GEXChart.jsx";
 import CandleStickChart from "./CandleStickChart.jsx";
 import SmallCheckboxButton from "./SmallCheckboxButton.jsx";
 import formatters from "./utils/formatters.js";
+import Slider from "./Slider.jsx";
 
 function GammaExposure() {
+    const NOW = "Now";
     const [quote, setQuote] = useState(null);
     const [gex, setGEX] = useState(null);
     const [expirationDates, setExpirationDates] = useState([]);
@@ -24,6 +26,9 @@ function GammaExposure() {
     const [showCallVolume, setShowCallVolume] = useState(false);
     const [showAbsoluteGEX, setShowAbsoluteGEX] = useState(false);
     const [showOpenInterest, setShowOpenInterest] = useState(false);
+    const [gexHistoryDateTimes, setGexHistoryDateTimes] = useState([]);
+    const [gexHistoryDateTimeInput, setGexHistoryDateTimeInput] = useState(null);
+    const [gexHistoryDateTime, setGexHistoryDateTime] = useState(null);
 
     /**
      * Find initial date range for stock chart.
@@ -187,6 +192,65 @@ function GammaExposure() {
         }
     }
 
+    async function fetchGexHistoryDateTimes(symbol) {
+        if (!symbol) {
+            return;
+        }
+        try {
+            setGexHistoryDateTimeInput(null);
+            setGexHistoryDateTime(null);
+            setGexHistoryDateTimes(null);
+            const url = `/api/v1/gex/history/datetimes/${symbol}`;
+            const response = await fetch(url);
+            if (!response.ok) {
+                const e = await response.json();
+                throw new Error(`${e.message}`);
+            }
+            const result = await response.json();
+            if (result && result.length) {
+                 const dateTimes = result.map(v => {
+                    const date = new Date();
+                    date.setTime(Date.parse(v));
+                    return {
+                        label: date.toLocaleString(),
+                        value: v
+                    };
+                });
+                const nowValue = {
+                    label: NOW,
+                    value: NOW
+                };
+                dateTimes.push(nowValue);
+                setGexHistoryDateTime(nowValue);
+                setGexHistoryDateTimeInput(nowValue);
+                setGexHistoryDateTimes(dateTimes);
+            }
+        } catch (error) {
+            console.log(error);
+        }
+    }
+
+    async function fetchGexHistory(symbol, dateTime) {
+        if (!(symbol && dateTime)) {
+            return;
+        }
+        if (dateTime === NOW) {
+            return fetchGEXData(symbol, selectedExpDates);
+        }
+        try {
+            const url = `/api/v1/gex/history/${symbol}?dateTime=${dateTime}`;
+            const response = await fetch(url);
+            if (!response.ok) {
+                const e = await response.json();
+                throw new Error(`${e.message}`);
+            }
+            const result = await response.json();
+            setGEX(result);
+        } catch (error) {
+            console.log(error);
+        }
+    }
+
     function submitForm(formData) {
         setError(null);
         let symbol = formData.get("symbol").toUpperCase();
@@ -199,6 +263,24 @@ function GammaExposure() {
         );
         setSelectedExpDates(expDates);
     }
+
+    function onGEXHistoryDateTimesSliderChange(value) {
+        setGexHistoryDateTimeInput(value);
+    }
+
+    useEffect(() => {
+        if (gexHistoryDateTimeInput) {
+            const timeout =
+                setTimeout(() => setGexHistoryDateTime(gexHistoryDateTimeInput.value), 500);
+            return () => clearTimeout(timeout);
+        }
+    }, [gexHistoryDateTimeInput])
+
+    useEffect(() => {
+        if (gexHistoryDateTime) {
+            fetchGexHistory(selectedSymbol, gexHistoryDateTime);
+        }
+    }, [gexHistoryDateTime])
 
     useEffect(() => {
         (async () => {
@@ -214,6 +296,7 @@ function GammaExposure() {
             setQuote(null);
             setSelectedExpDates(getInitialExpDates());
             await fetchOptionExpirationDates(selectedSymbol);
+            await fetchGexHistoryDateTimes(selectedSymbol);
         })();
     }, [selectedSymbol]);
 
@@ -269,13 +352,23 @@ function GammaExposure() {
                                     <div className="flex gap-4">
                                         <label className="font-semibold">Expiration Dates:</label>
                                         <select
+                                            disabled={!!gexHistoryDateTimeInput && gexHistoryDateTimeInput.value !== NOW}
                                             id="expirationDates"
                                             name="expirationDates"
                                             value={selectedExpDates}
                                             onChange={handleExpirationDates}
                                             multiple
                                             size="1"
-                                            className="h-6 border rounded px-2 overflow-auto">
+                                            className="
+                                                h-6
+                                                border
+                                                rounded
+                                                px-2
+                                                overflow-auto
+                                                disabled:opacity-60
+                                                disabled:bg-gray-100
+                                                disabled:border-gray-300
+                                                disabled:cursor-not-allowed">
                                             { expirationDates.map((expirationDate) => (
                                                 <option key={expirationDate} value={expirationDate}>
                                                     {expirationDate}
@@ -322,20 +415,23 @@ function GammaExposure() {
                                             if (!gex) {
                                                 return <></>;
                                             }
-                                            return <dl className="flex gap-4 items-center">
-                                                <dt className="font-semibold">Total Call GEX:</dt>
-                                                <dd>{formatters.number.format(gex.totalCallGEX)}</dd>
-                                                <dt className="font-semibold">Total Put GEX:</dt>
-                                                <dd>{formatters.number.format(gex.totalPutGEX)}</dd>
-                                                <dt className="font-semibold">Total GEX:</dt>
-                                                <dd>{formatters.number.format(gex.totalGEX)}</dd>
-                                                <dt className="font-semibold">Call Wall</dt>
-                                                <dd>{formatters.number.format(gex.callWall)}</dd>
-                                                <dt className="font-semibold">Put Wall</dt>
-                                                <dd>{formatters.number.format(gex.putWall)}</dd>
-                                                <dt className="font-semibold">Flip Point</dt>
-                                                <dd>{formatters.number.format(gex.flipPoint)}</dd>
-                                            </dl>
+                                            return <>
+                                                <dl className="flex gap-4 items-center">
+                                                    <dt className="font-semibold">Total Call GEX:</dt>
+                                                    <dd>{formatters.number.format(gex.totalCallGEX)}</dd>
+                                                    <dt className="font-semibold">Total Put GEX:</dt>
+                                                    <dd>{formatters.number.format(gex.totalPutGEX)}</dd>
+                                                    <dt className="font-semibold">Total GEX:</dt>
+                                                    <dd>{formatters.number.format(gex.totalGEX)}</dd>
+                                                    <dt className="font-semibold">Call Wall</dt>
+                                                    <dd>{formatters.number.format(gex.callWall)}</dd>
+                                                    <dt className="font-semibold">Put Wall</dt>
+                                                    <dd>{formatters.number.format(gex.putWall)}</dd>
+                                                    <dt className="font-semibold">Flip Point</dt>
+                                                    <dd>{formatters.number.format(gex.flipPoint)}</dd>
+                                                </dl>
+                                                <Slider data={gexHistoryDateTimes} onValueChange={onGEXHistoryDateTimesSliderChange} />
+                                            </>
                                         })()
                                     }
                                 </div>
