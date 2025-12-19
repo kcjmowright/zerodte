@@ -338,7 +338,7 @@ function GammaExposure() {
                                 <div>
                                     <h2 className="text-2xl font-bold tracking-tight text-gray-900 mb-4">{quote.reference.description} ({quote.symbol})</h2>
                                     <dl className="flex gap-4 items-center">
-                                        <dt className="font-semibold">Last (as of {quoteTime.toLocaleString()}):</dt>
+                                        <dt className="font-semibold">Last {!quoteTime.getTime() ? "" : `(as of ${quoteTime.toLocaleString()})`}:</dt>
                                         <dd>{formatters.currency.format(quote.quote.lastPrice)}</dd>
                                         <dt className="font-semibold">Close:</dt>
                                         <dd>{formatters.currency.format(quote.quote.closePrice)}</dd>

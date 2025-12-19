@@ -10,7 +10,7 @@ import java.util.List;
 
 public interface TotalGEXRepository extends JpaRepository<TotalGEXEntity, Long> {
 
-  @Query(value = "SELECT created FROM totalgex WHERE symbol = :symbol AND created between :start and :end", nativeQuery = true)
+  @Query(value = "SELECT created FROM totalgex WHERE symbol = :symbol AND created between :start and :end ORDER BY created", nativeQuery = true)
   List<Timestamp> findTimestampsBySymbolAndCreatedBetween(String symbol, LocalDateTime start, LocalDateTime end);
 
   default List<LocalDateTime> findBySymbolAndCreatedBetween(String symbol, LocalDateTime start, LocalDateTime end) {
