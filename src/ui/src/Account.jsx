@@ -94,7 +94,7 @@ function Account() {
                                     </thead>
                                     <tbody>
                                     {
-                                        account.positions.sort((a,b) => a.instrument.symbol.localeCompare(b.instrument.symbol)).map(position => {
+                                        account.positions && account.positions.sort((a,b) => a.instrument.symbol.localeCompare(b.instrument.symbol)).map(position => {
                                             return <tr>
                                                 <td className="border border-gray-300 p-4 text-gray-500 dark:border-gray-700 dark:text-gray-400">{position.instrument.symbol}</td>
                                                 <td className="border border-gray-300 p-4 text-gray-500 dark:border-gray-700 dark:text-gray-400">{(position.shortQuantity > 0) ? -position.shortQuantity : (position.longQuantity > 0) ? position.longQuantity : "N/A"}</td>

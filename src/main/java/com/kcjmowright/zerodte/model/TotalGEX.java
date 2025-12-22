@@ -8,7 +8,6 @@ import lombok.NonNull;
 import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -90,10 +89,7 @@ public class TotalGEX {
     gexBelowSpot.entrySet().stream().min(Map.Entry.comparingByValue()).map(Map.Entry::getKey)
         .ifPresent(totalGEX::setPutWall);
     // Find flip point
-    calculateFlipPoint(List.copyOf(totalGEX.getGexPerStrike().entrySet())).ifPresent(flipPoint -> {
-      totalGEX.setFlipPoint(flipPoint);
-      totalGEX.getGexPerStrike().computeIfAbsent(flipPoint, $ -> new OptionContractGEX(flipPoint));
-    });
+    calculateFlipPoint(List.copyOf(totalGEX.getGexPerStrike().entrySet())).ifPresent(totalGEX::setFlipPoint);
     return totalGEX;
   }
 
@@ -101,14 +97,14 @@ public class TotalGEX {
     if (numbers == null || numbers.size() < 2) {
       return Optional.empty();
     }
+    BigDecimal three = new BigDecimal("3.0");
     Map<BigDecimal, BigDecimal> average = new TreeMap<>();
-    for (int i = numbers.size(); --i > 0;) {
-      var previous = numbers.get(i - 1);
-      var current = numbers.get(i);
-      var ma = current.getValue().getTotalGEX()
-          .add(previous.getValue().getTotalGEX())
-          .divide(BigDecimal.TWO, MathConfig.MATH_CONTEXT);
-      average.put(numbers.get(i - 1).getKey(), ma);
+    for (int i = numbers.size(); --i > 1;) {
+      var sum = BigDecimal.ZERO;
+      for (int j = 3; --j >= 0;) {
+        sum = sum.add(numbers.get(i - j).getValue().getTotalGEX());
+      }
+      average.put(numbers.get(i - 1).getKey(), sum.divide(three, MathConfig.MATH_CONTEXT));
     }
     var averageList = List.copyOf(average.entrySet());
     for (int i = averageList.size(); --i > 0;) {
@@ -116,10 +112,7 @@ public class TotalGEX {
       var current = averageList.get(i);
       if ((previous.getValue().signum() > 0 && current.getValue().signum() < 0)
           || (previous.getValue().signum() < 0 && current.getValue().signum() > 0)) {
-        var flipPoint = current.getKey()
-            .add(averageList.get(i + 1).getKey())
-            .divide(BigDecimal.TWO, 0, RoundingMode.DOWN);
-        return Optional.of(flipPoint.setScale(1, RoundingMode.DOWN));
+        return Optional.of(current.getKey());
       }
     }
     return Optional.empty();

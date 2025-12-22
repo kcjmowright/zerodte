@@ -38,14 +38,16 @@ public class GammaExposureService {
     LocalDate from;
     LocalDate to;
     if (Objects.isNull(expirationDates) || expirationDates.isEmpty()) {
-      from = to = LocalDate.now();
+      from = LocalDate.now();
+      to = LocalDate.now().plusDays(1);
       expirationDates = List.of(from);
     } else if (expirationDates.size() == 1) {
-      from = to = expirationDates.getFirst();
+      from = expirationDates.getFirst();
+      to = from.plusDays(1);
     } else {
       expirationDates.sort(Comparator.naturalOrder());
       from = expirationDates.getFirst();
-      to = expirationDates.getLast();
+      to = expirationDates.getLast().plusDays(1);
     }
     final OptionChainRequest request = OptionChainRequest.builder()
         .withSymbol(symbol)
@@ -74,21 +76,20 @@ public class GammaExposureService {
 
   @Scheduled(cron = "0 */15 8-15 * * MON-FRI")
   public void captureSPXGammaExposure() {
-    List.of("QQQ", "SPY", "$SPX", "IWM").forEach(symbol -> {
-      computeGammaExposure(symbol, null, true).flatMap(totalGEX -> {
-            TotalGEXEntity entity = new TotalGEXEntity();
-            entity.setData(totalGEX);
-            entity.setSymbol(symbol);
-            entity.setCreated(LocalDateTime.now());
-            totalGEXRepository.save(entity);
-            return Mono.just(entity);
-          })
-          .subscribe(
-              savedEntity -> log.info("Successfully saved TotalGEX for symbol {} with id: {}", symbol, savedEntity.getId()),
-              error -> log.error("Error saving data for symbol {}", symbol, error),
-              () -> log.info("Completed data fetch and save for symbol {}", symbol)
-          );
-    });
+    List.of("QQQ", "SPY", "$SPX", "IWM").forEach(symbol ->
+        computeGammaExposure(symbol, null, true).flatMap(totalGEX -> {
+          TotalGEXEntity entity = new TotalGEXEntity();
+          entity.setData(totalGEX);
+          entity.setSymbol(symbol);
+          entity.setCreated(LocalDateTime.now());
+          totalGEXRepository.save(entity);
+          return Mono.just(entity);
+        })
+        .subscribe(
+            savedEntity -> log.info("Successfully saved TotalGEX for symbol {} with id: {}", symbol, savedEntity.getId()),
+            error -> log.error("Error saving data for symbol {}", symbol, error),
+            () -> log.info("Completed data fetch and save for symbol {}", symbol)
+        ));
   }
 
   public Flux<LocalDateTime> findTotalGEXCaptureDateTimes(String symbol, LocalDateTime start, LocalDateTime end) {

@@ -48,7 +48,7 @@ function GammaExposure() {
                 break;
             case 6:
                 startDay.setDate(startDay.getDate() - 1);
-                endDay.setDate(startDay.getdate());
+                endDay.setDate(startDay.getDate());
                 break;
             default:
                 startDay.setDate(startDay.getDate() - 1);
@@ -71,12 +71,12 @@ function GammaExposure() {
      */
     function getInitialExpDates() {
         const dates = [];
-
-        const startDay = new Date();
-        if (startDay.getDay() === 0) {
-            startDay.setDate(startDay.getDate());
-        } else if (startDay.getDay() === 6) {
+        const today = new Date();
+        const startDay = new Date(today);
+        if (startDay.getDay() === 0) { // If Sunday
             startDay.setDate(startDay.getDate() + 1);
+        } else if (startDay.getDay() === 6) { // If Saturday
+            startDay.setDate(startDay.getDate() + 2);
         }
         dates.push(startDay.toISOString().split('T')[0]);
 
@@ -90,7 +90,9 @@ function GammaExposure() {
         dates.push(thisFriday.toISOString().split('T')[0]);
 
         const thirdFridayThisMonth = getNthFriday(startDay.getFullYear(), startDay.getMonth(), 3);
-        dates.push(thirdFridayThisMonth.toISOString().split('T')[0]);
+        if (thirdFridayThisMonth.getTime() > today.getTime()) { // If 3rd Friday this month is not in the past
+            dates.push(thirdFridayThisMonth.toISOString().split('T')[0]);
+        }
 
         const nextMonth = new Date(startDay.getFullYear(), startDay.getMonth() + 1, 1);
         const thirdFridayNextMonth = getNthFriday(nextMonth.getFullYear(), nextMonth.getMonth(), 3);
@@ -221,7 +223,7 @@ function GammaExposure() {
                     value: NOW
                 };
                 dateTimes.push(nowValue);
-                setGexHistoryDateTime(nowValue);
+                setGexHistoryDateTime(NOW);
                 setGexHistoryDateTimeInput(nowValue);
                 setGexHistoryDateTimes(dateTimes);
             }
