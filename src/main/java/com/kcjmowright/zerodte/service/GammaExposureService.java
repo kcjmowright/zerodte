@@ -74,8 +74,8 @@ public class GammaExposureService {
         Flux.fromStream(res.getExpirationList().stream().map(Expiration::getExpirationDate)));
   }
 
-  @Scheduled(cron = "0 */15 8-15 * * MON-FRI")
-  public void captureSPXGammaExposure() {
+  @Scheduled(cron = "0 */1 8-15 * * MON-FRI")
+  public void captureGammaExposure() {
     List.of("QQQ", "SPY", "$SPX", "IWM").forEach(symbol ->
         computeGammaExposure(symbol, null, true).flatMap(totalGEX -> {
           TotalGEXEntity entity = new TotalGEXEntity();

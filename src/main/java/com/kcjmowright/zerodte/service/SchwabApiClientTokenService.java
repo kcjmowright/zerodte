@@ -1,7 +1,6 @@
 package com.kcjmowright.zerodte.service;
 
 import com.kcjmowright.zerodte.model.entity.SessionEntity;
-import com.kcjmowright.zerodte.repository.SessionRepository;
 import com.pangility.schwab.api.client.accountsandtrading.SchwabAccountsAndTradingApiClient;
 import com.pangility.schwab.api.client.common.EnableSchwabApi;
 import com.pangility.schwab.api.client.marketdata.SchwabMarketDataApiClient;
@@ -16,7 +15,6 @@ import org.springframework.stereotype.Service;
 import reactor.util.retry.Retry;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Objects;
 
 @Service
@@ -24,7 +22,7 @@ import java.util.Objects;
 @EnableSchwabApi
 @Slf4j
 public class SchwabApiClientTokenService implements SchwabTokenHandler {
-  private final SessionRepository sessionRepository;
+  private final SessionService sessionService;
   private final SchwabAccountsAndTradingApiClient accountsAndTradingClient;
   private final SchwabMarketDataApiClient marketDataClient;
 
@@ -39,37 +37,36 @@ public class SchwabApiClientTokenService implements SchwabTokenHandler {
 
   @Override
   public void onAccessTokenChange(SchwabAccount schwabAccount) {
-    sessionRepository.deleteAll();
+    SessionEntity session = sessionService.findByUsername(userId);
+    if (session == null) {
+      session = new SessionEntity();
+    }
     LocalDateTime now = LocalDateTime.now();
-    SessionEntity session = new SessionEntity();
-    session.setUsername(schwabAccount.getUserId());
+    session.setLastUpdated(now);
+    session.setCreated(now);
+    session.setUsername(userId);
     session.setToken(schwabAccount.getAccessToken());
     session.setAccessExpiration(schwabAccount.getAccessExpiration());
     session.setRefreshToken(schwabAccount.getRefreshToken());
     session.setRefreshExpiration(schwabAccount.getRefreshExpiration());
-    session.setLastUpdated(now);
-    session.setCreated(now);
-    sessionRepository.save(session);
+    sessionService.save(session);
   }
 
   @Override
   public void onRefreshTokenChange(SchwabAccount schwabAccount) {
-    List<SessionEntity> sessions = sessionRepository.findAll();
+    SessionEntity session = sessionService.findByUsername(schwabAccount.getUserId());
     LocalDateTime now = LocalDateTime.now();
-    SessionEntity session;
-    if (sessions.isEmpty()) {
+    if (session == null) {
       session = new SessionEntity();
       session.setCreated(now);
-    } else {
-      session = sessions.getFirst();
     }
+    session.setUsername(userId);
     session.setToken(schwabAccount.getAccessToken());
-    session.setUsername(schwabAccount.getUserId());
     session.setAccessExpiration(schwabAccount.getAccessExpiration());
     session.setRefreshToken(schwabAccount.getRefreshToken());
     session.setRefreshExpiration(schwabAccount.getRefreshExpiration());
     session.setLastUpdated(now);
-    sessionRepository.save(session);
+    sessionService.save(session);
   }
 
   public String getEncryptedAccountHash() {
@@ -88,19 +85,17 @@ public class SchwabApiClientTokenService implements SchwabTokenHandler {
   @PostConstruct
   public void init() {
     if (!(accountsAndTradingClient.isInitialized() && marketDataClient.isInitialized())) {
-      List<SessionEntity> sessions = sessionRepository.findAll();
+      SessionEntity session = sessionService.findByUsername(userId);
       SchwabAccount schwabAccount = new SchwabAccount();
-      if (!sessions.isEmpty()) {
+      schwabAccount.setUserId(userId);
+      if (session != null) {
         log.warn("Using existing session");
-        SessionEntity session = sessions.getFirst();
         schwabAccount.setAccessToken(session.getToken());
         schwabAccount.setAccessExpiration(session.getAccessExpiration());
         schwabAccount.setRefreshToken(session.getRefreshToken());
         schwabAccount.setRefreshExpiration(session.getRefreshExpiration());
-        schwabAccount.setUserId(session.getUsername());
       } else {
         log.warn("No existing session");
-        schwabAccount.setUserId(userId);
       }
       if (!accountsAndTradingClient.isInitialized()) {
         accountsAndTradingClient.init(schwabAccount, this);

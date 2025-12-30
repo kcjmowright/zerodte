@@ -8,6 +8,7 @@ import lombok.NonNull;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -26,12 +27,14 @@ public class TotalGEX {
   private BigDecimal callWall = BigDecimal.ZERO;
   private BigDecimal putWall = BigDecimal.ZERO;
   private BigDecimal flipPoint = BigDecimal.ZERO;
+  private BigDecimal spotPrice = BigDecimal.ZERO;
+  private LocalDateTime timestamp;
 
   /**
    * Calculate GEX values from options contracts.
    * @param optionContracts a {@link Stream} of {@link OptionContract} elements.
-   * @param spotPrice current underlying price
-   * @param suppressDetails do not include contract details
+   * @param spotPrice current underlying price.
+   * @param suppressDetails if true, do not include contract details.
    * @return total GEX computations
    */
   public static TotalGEX fromOptionContracts(
@@ -40,6 +43,7 @@ public class TotalGEX {
       boolean suppressDetails) {
 
     final TotalGEX totalGEX = new TotalGEX();
+    totalGEX.setTimestamp(LocalDateTime.now());
     final Map<BigDecimal, BigDecimal> gexAboveSpot = new TreeMap<>(); // Track Total GEX above spot price
     final Map<BigDecimal, BigDecimal> gexBelowSpot = new TreeMap<>(); // Track Total GEX below spot price
 
@@ -55,6 +59,7 @@ public class TotalGEX {
             .add(GammaExposure.putGEX(contract.getGamma(), contract.getOpenInterest(), spotPrice)));
         optionContractGEX.setPutVolume(optionContractGEX.getPutVolume()
             .add(BigDecimal.valueOf(contract.getTotalVolume())));
+        optionContractGEX.setPutVolatility(contract.getVolatility());
         totalGEX.setTotalPutGEX(totalGEX.getTotalPutGEX().add(optionContractGEX.getPutGEX()));
       } else { // CALLs
         if (!suppressDetails) {
@@ -64,6 +69,7 @@ public class TotalGEX {
             .add(GammaExposure.callGEX(contract.getGamma(), contract.getOpenInterest(), spotPrice)));
         optionContractGEX.setCallVolume(optionContractGEX.getCallVolume()
             .add(BigDecimal.valueOf(contract.getTotalVolume())));
+        optionContractGEX.setCallVolatility(contract.getVolatility());
         totalGEX.setTotalCallGEX(totalGEX.getTotalCallGEX().add(optionContractGEX.getCallGEX()));
       }
       optionContractGEX.setOpenInterest(optionContractGEX.getOpenInterest().add(contract.getOpenInterest()));
@@ -90,6 +96,7 @@ public class TotalGEX {
         .ifPresent(totalGEX::setPutWall);
     // Find flip point
     calculateFlipPoint(List.copyOf(totalGEX.getGexPerStrike().entrySet())).ifPresent(totalGEX::setFlipPoint);
+    totalGEX.setSpotPrice(spotPrice);
     return totalGEX;
   }
 

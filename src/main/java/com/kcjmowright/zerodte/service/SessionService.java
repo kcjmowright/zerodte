@@ -17,4 +17,8 @@ public class SessionService {
   public void deleteByUsername(String username) {
     sessionRepository.deleteByUsername(username);
   }
+
+  public SessionEntity save(SessionEntity sessionEntity) {
+    return sessionRepository.save(sessionEntity);
+  }
 }

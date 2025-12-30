@@ -17,6 +17,7 @@ import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @RestController
 @RequiredArgsConstructor
@@ -27,30 +28,35 @@ public class SessionController {
 
   @GetMapping("/session/status")
   public ResponseEntity<SessionStatus> getSessionStatus(@CookieValue(value = "zun", defaultValue = "") String username) {
-    if (username == null || username.isEmpty()) {
-      SessionStatus status = new SessionStatus(null, null, true);
+    try {
+      if (username == null || username.isEmpty()) {
+        SessionStatus status = new SessionStatus(null, null, true);
+        return ResponseEntity.ok().body(status);
+      }
+      SessionEntity session = sessionService.findByUsername(username);
+      if (session == null) {
+        SessionStatus status = new SessionStatus(null, null, true);
+        return ResponseEntity.ok().body(status);
+      }
+      SessionStatus status = new SessionStatus(session.getUsername(), session.getRefreshExpiration(),
+          session.getRefreshExpiration().isBefore(LocalDateTime.now()));
+      if (Objects.equals(status.getExpired(), Boolean.FALSE)) {
+        ResponseCookie cookie = ResponseCookie.from("zun", session.getUsername())
+            .httpOnly(true)
+            .secure(true)
+            .path("/")
+            .maxAge(Duration.between(LocalDateTime.now(), session.getRefreshExpiration()))
+            .sameSite("Lax")
+            .build();
+        return ResponseEntity.ok()
+            .header(HttpHeaders.SET_COOKIE, cookie.toString())
+            .body(status);
+      }
       return ResponseEntity.ok().body(status);
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      return ResponseEntity.internalServerError().build();
     }
-    SessionEntity session = sessionService.findByUsername(username);
-    if (session == null) {
-      SessionStatus status = new SessionStatus(null, null, true);
-      return ResponseEntity.ok().body(status);
-    }
-    SessionStatus status = new SessionStatus(session.getUsername(), session.getRefreshExpiration(),
-        session.getRefreshExpiration().isBefore(LocalDateTime.now()));
-    if (status.getExpired() == Boolean.FALSE) {
-      ResponseCookie cookie = ResponseCookie.from("zun", session.getUsername())
-          .httpOnly(true)
-          .secure(true)
-          .path("/")
-          .maxAge(Duration.between(LocalDateTime.now(), session.getRefreshExpiration()))
-          .sameSite("Lax")
-          .build();
-      return ResponseEntity.ok()
-          .header(HttpHeaders.SET_COOKIE, cookie.toString())
-          .body(status);
-    }
-    return ResponseEntity.ok().body(status);
   }
 
   @DeleteMapping("/session")

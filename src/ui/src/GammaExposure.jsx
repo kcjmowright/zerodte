@@ -202,7 +202,12 @@ function GammaExposure() {
             setGexHistoryDateTimeInput(null);
             setGexHistoryDateTime(null);
             setGexHistoryDateTimes(null);
-            const url = `/api/v1/gex/history/datetimes/${symbol}`;
+            const endDate = new Date();
+            const end = endDate.toISOString().split("Z")[0]; // Server parser no likey the Z
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - 30);
+            const start = startDate.toISOString().split("Z")[0];
+            const url = `/api/v1/gex/history/datetimes/${symbol}?start=${start}&end=${end}`;
             const response = await fetch(url);
             if (!response.ok) {
                 const e = await response.json();
