@@ -2,7 +2,7 @@ package com.kcjmowright.zerodte.model.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import lombok.ToString;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "quote")
 @Data
-@ToString
+@NoArgsConstructor
 public class QuoteEntity {
 
   @Id

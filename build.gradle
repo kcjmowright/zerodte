@@ -26,6 +26,7 @@ repositories {
 	mavenCentral()
 }
 
+var dl4jVersion = '1.0.0-M2.1'
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
@@ -42,6 +43,13 @@ dependencies {
 	testImplementation 'io.projectreactor:reactor-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	implementation group: 'com.pangility', name: 'schwab-api-client', version: '0.1.6'
+
+    implementation("org.deeplearning4j:deeplearning4j-core:$dl4jVersion")
+    implementation("org.nd4j:nd4j-api:$dl4jVersion")
+    runtimeOnly("org.nd4j:nd4j-native-platform:$dl4jVersion")
+    implementation("org.datavec:datavec-api:$dl4jVersion")
+    implementation("org.nd4j:nd4j-native:$dl4jVersion:macosx-arm64")
+    implementation("org.bytedeco:openblas:0.3.21-1.5.8:macosx-arm64")
 }
 
 tasks.named('test') {
