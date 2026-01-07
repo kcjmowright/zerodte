@@ -49,8 +49,8 @@ public class TotalGEX {
 
     optionContracts.forEach(contract -> {
       OptionContractGEX optionContractGEX = totalGEX.getGexPerStrike()
-          .computeIfAbsent(contract.getStrikePrice(), $ -> new OptionContractGEX(contract.getStrikePrice()));
-
+          .computeIfAbsent(contract.getStrikePrice(), $ -> new OptionContractGEX());
+      optionContractGEX.setStrike(contract.getStrikePrice());
       if (contract.getPutCall() == OptionContract.PutCall.PUT) { // PUTs
         if (!suppressDetails) {
           optionContractGEX.getContracts().add(contract);

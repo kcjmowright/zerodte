@@ -93,7 +93,7 @@ public class GammaExposureService {
   }
 
   public Flux<LocalDateTime> findTotalGEXCaptureDateTimes(String symbol, LocalDateTime start, LocalDateTime end) {
-    return Flux.fromStream(totalGEXRepository.findBySymbolAndCreatedBetween(symbol, start, end).stream());
+    return Flux.fromStream(totalGEXRepository.findCreatedBySymbolAndCreatedBetween(symbol, start, end).stream());
   }
 
   public Flux<TotalGEX> findTotalGEXBySymbolBetween(String symbol, LocalDateTime start, LocalDateTime end) {

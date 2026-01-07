@@ -69,7 +69,7 @@ public class PriceService {
 
   @Scheduled(cron = "0 */1 8-15 * * MON-FRI")
   public void captureVolatility() {
-    marketDataClient.fetchQuoteToMono("VIX")
+    marketDataClient.fetchQuoteToMono("$VIX")
         .flatMap(response -> Mono.just(quoteRepository.save(getQuote(response))))
         .subscribe(
             entity -> log.info("Successfully saved VIX {}", entity),

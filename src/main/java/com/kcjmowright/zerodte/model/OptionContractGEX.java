@@ -2,7 +2,7 @@ package com.kcjmowright.zerodte.model;
 
 import com.pangility.schwab.api.client.marketdata.model.chains.OptionContract;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
@@ -11,9 +11,9 @@ import java.util.List;
 
 @Getter
 @Setter
-@RequiredArgsConstructor
+@NoArgsConstructor
 public class OptionContractGEX implements Comparable<OptionContractGEX> {
-  private final BigDecimal strike;
+  private BigDecimal strike;
   private final List<OptionContract> contracts = new ArrayList<>();
   private BigDecimal callGEX = BigDecimal.ZERO;
   private BigDecimal putGEX = BigDecimal.ZERO;
