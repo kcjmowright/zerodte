@@ -93,7 +93,11 @@ public class GammaExposureService {
   }
 
   public Flux<LocalDateTime> findTotalGEXCaptureDateTimes(String symbol, LocalDateTime start, LocalDateTime end) {
-    return Flux.fromStream(totalGEXRepository.findBySymbolAndCreatedBetween(symbol, start, end).stream());
+    return Flux.fromStream(totalGEXRepository.findCreatedBySymbolAndCreatedBetween(symbol, start, end).stream());
+  }
+
+  public Flux<TotalGEX> findTotalGEXBySymbolBetween(String symbol, LocalDateTime start, LocalDateTime end) {
+    return Flux.fromStream(totalGEXRepository.getTotalGEXBySymbolBetween(symbol, start, end).stream());
   }
 
   public Mono<TotalGEX> getTotalGEXCapture(String symbol, LocalDateTime created) {
@@ -104,5 +108,13 @@ public class GammaExposureService {
           totalGEX.setGexPerStrike(sortedMap);
           return totalGEX;
         });
+  }
+
+  public TotalGEX getLatestBySymbol(String symbol) {
+    return totalGEXRepository.getLatestBySymbol(symbol);
+  }
+
+  public List<TotalGEX> getMostRecentBySymbol(String symbol, int limit) {
+    return totalGEXRepository.getMostRecentBySymbol(symbol, limit);
   }
 }

@@ -453,7 +453,7 @@ function GammaExposure() {
                                     showOpenInterest={showOpenInterest}
                                     showPutGEX={showPutGEX}
                                     showPutVolume={showPutVolume}
-                                    spotPrice={quote.quote.lastPrice} />
+                                    spotPrice={gex.spotPrice} />
                                 }
                                 { priceHistoryStudies && <CandleStickChart quoteStudies={priceHistoryStudies} /> }
                             </>;

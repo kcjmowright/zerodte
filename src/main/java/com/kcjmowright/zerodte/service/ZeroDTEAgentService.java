@@ -1,18 +1,8 @@
 package com.kcjmowright.zerodte.service;
 
-import static java.util.function.Predicate.not;
-
-import java.math.BigDecimal;
-import java.math.MathContext;
-import java.math.RoundingMode;
-import java.time.*;
-import java.time.temporal.ChronoUnit;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
-import com.kcjmowright.zerodte.model.*;
+import com.kcjmowright.exceptions.ResourceNotAvailableException;
+import com.kcjmowright.zerodte.model.IronCondorContracts;
+import com.kcjmowright.zerodte.model.TickerSymbol;
 import com.kcjmowright.zerodte.model.entity.OrderEntity;
 import com.kcjmowright.zerodte.model.entity.PositionEntity;
 import com.kcjmowright.zerodte.model.entity.QuoteEntity;
@@ -24,8 +14,14 @@ import com.pangility.schwab.api.client.accountsandtrading.model.account.Account;
 import com.pangility.schwab.api.client.accountsandtrading.model.account.Position;
 import com.pangility.schwab.api.client.accountsandtrading.model.instrument.AssetType;
 import com.pangility.schwab.api.client.accountsandtrading.model.instrument.EquityInstrument;
+import com.pangility.schwab.api.client.accountsandtrading.model.order.ComplexOrderStrategyType;
 import com.pangility.schwab.api.client.accountsandtrading.model.order.Duration;
-import com.pangility.schwab.api.client.accountsandtrading.model.order.*;
+import com.pangility.schwab.api.client.accountsandtrading.model.order.Order;
+import com.pangility.schwab.api.client.accountsandtrading.model.order.OrderLegCollection;
+import com.pangility.schwab.api.client.accountsandtrading.model.order.OrderRequest;
+import com.pangility.schwab.api.client.accountsandtrading.model.order.OrderType;
+import com.pangility.schwab.api.client.accountsandtrading.model.order.Session;
+import com.pangility.schwab.api.client.accountsandtrading.model.order.Status;
 import com.pangility.schwab.api.client.marketdata.SchwabMarketDataApiClient;
 import com.pangility.schwab.api.client.marketdata.model.chains.OptionChainRequest;
 import com.pangility.schwab.api.client.marketdata.model.chains.OptionChainResponse;
@@ -42,6 +38,30 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
+
+import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import static java.util.function.Predicate.not;
 
 @Service
 @RequiredArgsConstructor
@@ -102,9 +122,9 @@ public class ZeroDTEAgentService {
     log.info("Executing strategy.  Open order id: {}, Open Positions: {}, Closed Positions: {}",
         openOrderId.get(), openPositionIds.get(), closedPositionIds.get());
     ZonedDateTime now = ZonedDateTime.now(CST);
-    if (now.getDayOfWeek().getValue() > 5) {
-      return; // Skip weekends
-    }
+//    if (now.getDayOfWeek().getValue() > 5) {
+//      return; // Skip weekends
+//    }
     LocalTime nowTime = now.toLocalTime();
     final LocalDate today = LocalDate.now();
     if (nowTime.isAfter(TRADE_TIME_OPEN) && nowTime.isBefore(CLOSE_TIME)) {
@@ -171,7 +191,7 @@ public class ZeroDTEAgentService {
               || optionChainResponse.getPutExpDateMap() == null
               || optionChainResponse.getPutExpDateMap().isEmpty()) {
             log.error("Option chain is empty or null.");
-            sink.error(new RuntimeException("Option chain is empty or null."));
+            sink.error(new ResourceNotAvailableException("Option chain is not currently available."));
             return;
           }
 
@@ -196,7 +216,7 @@ public class ZeroDTEAgentService {
               || optionalShortCall.isEmpty()
               || optionalLongCall.isEmpty()) {
             log.error("Could not find required options.");
-            sink.error(new RuntimeException("Could not find required options"));
+            sink.error(new ResourceNotAvailableException("Could not find required options"));
             return;
           }
 
@@ -517,48 +537,48 @@ public class ZeroDTEAgentService {
     return orderLegCollection;
   }
 
-  /**
-   * Close the given legs.
-   */
-  private void closeLegs(Set<TickerSymbol> tickerSymbols, InstrumentType instrumentType) {
-    log.info("Closing {} positions {}", instrumentType, tickerSymbols);
-    if (simulated) {
-      closeSimulatedPositions(tickerSymbols.stream().filter(ts -> ts.getType() == instrumentType).toList());
-      return;
-    }
-    List<Position> positions = fetchAccount()
-        .flatMapMany(account -> Flux.fromIterable(account.getSecuritiesAccount().getPositions()))
-        .filter(position -> {
-          var tickerSymbol = TickerSymbol.fromString(position.getInstrument().getSymbol());
-          return tickerSymbols.contains(tickerSymbol) && instrumentType == tickerSymbol.getType();
-        })
-        .toStream()
-        .toList();
-    BigDecimal price =
-        positions.stream().map(position -> {
-          BigDecimal quantity =
-              position.getLongQuantity() != null ? position.getLongQuantity() : position.getShortQuantity();
-          return position.getMarketValue().multiply(quantity);
-        }).reduce(BigDecimal.ZERO, BigDecimal::add);
-    List<OrderLegCollection> orderLegCollections = positions.stream()
-        .map(position -> {
-          BigDecimal quantity =
-              position.getLongQuantity() != null && position.getLongQuantity().compareTo(BigDecimal.ZERO) != 0 ?
-                  position.getLongQuantity() : position.getShortQuantity();
-          OrderLegCollection.Instruction instruction = quantity.compareTo(BigDecimal.ZERO) < 0 ?
-              OrderLegCollection.Instruction.BUY_TO_CLOSE : OrderLegCollection.Instruction.SELL_TO_CLOSE;
-          return createOrderLegCollection(position.getInstrument().getSymbol(), quantity.negate(), instruction);
-        })
-        .toList();
-
-    Order order = new Order();
-    order.setOrderLegCollection(orderLegCollections);
-    order.setComplexOrderStrategyType(ComplexOrderStrategyType.VERTICAL);
-    order.setDuration(Duration.DAY);
-    order.setOrderType(OrderType.LIMIT);
-    order.setPrice(price);
-    placeOrder(order).subscribe();
-  }
+//  /**
+//   * Close the given legs.
+//   */
+//  private void closeLegs(Set<TickerSymbol> tickerSymbols, InstrumentType instrumentType) {
+//    log.info("Closing {} positions {}", instrumentType, tickerSymbols);
+//    if (simulated) {
+//      closeSimulatedPositions(tickerSymbols.stream().filter(ts -> ts.getType() == instrumentType).toList());
+//      return;
+//    }
+//    List<Position> positions = fetchAccount()
+//        .flatMapMany(account -> Flux.fromIterable(account.getSecuritiesAccount().getPositions()))
+//        .filter(position -> {
+//          var tickerSymbol = TickerSymbol.fromString(position.getInstrument().getSymbol());
+//          return tickerSymbols.contains(tickerSymbol) && instrumentType == tickerSymbol.getType();
+//        })
+//        .toStream()
+//        .toList();
+//    BigDecimal price =
+//        positions.stream().map(position -> {
+//          BigDecimal quantity =
+//              position.getLongQuantity() != null ? position.getLongQuantity() : position.getShortQuantity();
+//          return position.getMarketValue().multiply(quantity);
+//        }).reduce(BigDecimal.ZERO, BigDecimal::add);
+//    List<OrderLegCollection> orderLegCollections = positions.stream()
+//        .map(position -> {
+//          BigDecimal quantity =
+//              position.getLongQuantity() != null && position.getLongQuantity().compareTo(BigDecimal.ZERO) != 0 ?
+//                  position.getLongQuantity() : position.getShortQuantity();
+//          OrderLegCollection.Instruction instruction = quantity.compareTo(BigDecimal.ZERO) < 0 ?
+//              OrderLegCollection.Instruction.BUY_TO_CLOSE : OrderLegCollection.Instruction.SELL_TO_CLOSE;
+//          return createOrderLegCollection(position.getInstrument().getSymbol(), quantity.negate(), instruction);
+//        })
+//        .toList();
+//
+//    Order order = new Order();
+//    order.setOrderLegCollection(orderLegCollections);
+//    order.setComplexOrderStrategyType(ComplexOrderStrategyType.VERTICAL);
+//    order.setDuration(Duration.DAY);
+//    order.setOrderType(OrderType.LIMIT);
+//    order.setPrice(price);
+//    placeOrder(order).subscribe();
+//  }
 
   /**
    * Close the remaining positions.

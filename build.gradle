@@ -1,10 +1,11 @@
 plugins {
 	id 'java'
 	id "com.github.node-gradle.node" version "3.5.0"
-	id 'org.springframework.boot' version '3.4.3'
+	id 'org.springframework.boot' version '4.0.1'
 	id 'io.spring.dependency-management' version '1.1.7'
 	id 'org.graalvm.buildtools.native' version '0.10.5'
 	id 'org.flywaydb.flyway' version '6.4.3'
+    id 'com.autonomousapps.dependency-analysis' version '3.4.1'
 }
 
 group = 'com.kcjmowright'
@@ -12,7 +13,7 @@ version = '0.0.1-SNAPSHOT'
 
 java {
 	toolchain {
-		languageVersion = JavaLanguageVersion.of(21)
+		languageVersion = JavaLanguageVersion.of(25)
 	}
 }
 
@@ -26,22 +27,54 @@ repositories {
 	mavenCentral()
 }
 
+var dl4jVersion = '1.0.0-M2.1'
+
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-actuator'
-	implementation 'org.springframework.boot:spring-boot-starter-webflux'
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	implementation group: 'com.opencsv', name: 'opencsv', version: '5.11'
-	compileOnly 'org.projectlombok:lombok'
-	developmentOnly 'org.springframework.boot:spring-boot-devtools'
-	runtimeOnly 'org.postgresql:postgresql'
-	implementation 'org.flywaydb:flyway-core'
-	implementation 'org.flywaydb:flyway-database-postgresql'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+    // implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    // implementation 'org.springframework.boot:spring-boot-starter-webflux'
+	// implementation 'com.opencsv:opencsv:5.12.0'
+
 	implementation 'ch.obermuhlner:big-math:2.3.2'
-	annotationProcessor 'org.projectlombok:lombok'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'com.pangility:schwab-api-client:0.1.6'
+    implementation("org.deeplearning4j:deeplearning4j-core:$dl4jVersion")
+    implementation("org.nd4j:nd4j-api:$dl4jVersion")
+    implementation("org.datavec:datavec-api:$dl4jVersion")
+    implementation("org.nd4j:nd4j-native:$dl4jVersion:macosx-arm64")
+    //implementation("org.bytedeco:openblas:0.3.21-1.5.8:macosx-arm64")
+	implementation 'org.bytedeco:openblas-platform:0.3.30-1.5.12'
+	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310' // for proper serialization of java date times.
+
+    compileOnly 'org.projectlombok:lombok'
+
+    annotationProcessor 'org.projectlombok:lombok'
+
+    runtimeOnly 'org.postgresql:postgresql'
+    runtimeOnly("org.nd4j:nd4j-native-platform:$dl4jVersion")
+    runtimeOnly 'org.flywaydb:flyway-core'
+    runtimeOnly 'org.flywaydb:flyway-database-postgresql'
+
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'io.projectreactor:reactor-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-	implementation group: 'com.pangility', name: 'schwab-api-client', version: '0.1.6'
+}
+
+tasks.named("bootBuildImage") {
+    environment = [
+            "BP_NATIVE_IMAGE": "true",
+            "BP_NATIVE_IMAGE_BUILD_ARGUMENTS": """
+				-J-Xmx24g
+				-H:NumberOfThreads=4
+				--initialize-at-build-time=org.springframework
+				--initialize-at-build-time=org.apache.commons.logging
+				--initialize-at-build-time=org.slf4j.helpers.BasicMarker
+				--initialize-at-build-time=org.aspectj.runtime
+				--trace-object-instantiation=ch.qos.logback
+				--no-fallback
+			""".trim()
+    ]
 }
 
 tasks.named('test') {
