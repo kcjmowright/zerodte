@@ -25,14 +25,14 @@ public class GEXModelBuilder {
    * Simple Feed-Forward Neural Network
    * Best for: Basic price prediction without temporal dependencies
    */
-  public MultiLayerNetwork buildFeedForwardNetwork(int numInputs, int seed) {
+  public MultiLayerNetwork buildFeedForwardNetwork(int numInputs, int seed, double learningRate, double l2) {
     log.info("Building Feed-Forward Network with {} inputs", numInputs);
 
     MultiLayerConfiguration config = new NeuralNetConfiguration.Builder()
         .seed(seed)
         .weightInit(WeightInit.XAVIER)
-        .updater(new Adam(0.001))
-        .l2(0.0001) // L2 regularization
+        .updater(new Adam(learningRate))
+        .l2(l2) // L2 regularization
         .list()
         // Input layer
         .layer(new DenseLayer.Builder()
@@ -74,15 +74,15 @@ public class GEXModelBuilder {
    * LSTM Network
    * Best for: Capturing temporal patterns in GEX data
    */
-  public MultiLayerNetwork buildLSTMNetwork(int numInputs, int sequenceLength, int seed) {
+  public MultiLayerNetwork buildLSTMNetwork(int numInputs, int sequenceLength, int seed, double learningRate, double l2) {
     log.info("Building LSTM Network with {} inputs, sequence length {}",
         numInputs, sequenceLength);
 
     MultiLayerConfiguration config = new NeuralNetConfiguration.Builder()
         .seed(seed)
         .weightInit(WeightInit.XAVIER)
-        .updater(new Adam(0.001))
-        .l2(0.0001)
+        .updater(new Adam(learningRate))
+        .l2(l2)
         .list()
         // LSTM layer 1
         .layer(new LSTM.Builder()
@@ -115,14 +115,14 @@ public class GEXModelBuilder {
    * Deep Feed-Forward with Batch Normalization
    * Best for: Complex non-linear GEX relationships
    */
-  public MultiLayerNetwork buildDeepNetwork(int numInputs, int seed) {
+  public MultiLayerNetwork buildDeepNetwork(int numInputs, int seed, double learningRate, double l2) {
     log.info("Building Deep Network with {} inputs", numInputs);
 
     MultiLayerConfiguration config = new NeuralNetConfiguration.Builder()
         .seed(seed)
         .weightInit(WeightInit.XAVIER)
-        .updater(new Adam(0.0005))
-        .l2(0.00001)
+        .updater(new Adam(learningRate))
+        .l2(l2)
         .list()
         // Layer 1
         .layer(new DenseLayer.Builder()
@@ -315,22 +315,22 @@ public class GEXModelBuilder {
   /**
    * Get recommended model based on data characteristics
    */
-  public MultiLayerNetwork buildRecommendedModel(int numInputs, int numSamples, boolean hasTemporalData, int seed) {
+  public MultiLayerNetwork buildRecommendedModel(int numInputs, int numSamples, boolean hasTemporalData, int seed, double learningRate, double l2) {
     log.info("Building recommended model for {} samples, {} inputs",
         numSamples, numInputs);
     if (numSamples < 1000) {
       log.info("Small dataset - using simple feed-forward network");
-      return buildFeedForwardNetwork(numInputs, seed);
+      return buildFeedForwardNetwork(numInputs, seed, learningRate, l2);
     }
     if (hasTemporalData && numSamples > 5000) {
       log.info("Large temporal dataset - using LSTM");
-      return buildLSTMNetwork(numInputs, 10, seed);
+      return buildLSTMNetwork(numInputs, 10, seed, learningRate, l2);
     }
     if (numSamples > 10000) {
       log.info("Large dataset - using deep network");
-      return buildDeepNetwork(numInputs, seed);
+      return buildDeepNetwork(numInputs, seed, learningRate, l2);
     }
     log.info("Medium dataset - using feed-forward network");
-    return buildFeedForwardNetwork(numInputs, seed);
+    return buildFeedForwardNetwork(numInputs, seed, learningRate, l2);
   }
 }

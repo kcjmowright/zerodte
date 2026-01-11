@@ -1,0 +1,24 @@
+## Train
+POST http://localhost:7301/api/v1/ai/train
+Content-Type: application/json
+Accept: applicadtion/json
+
+{
+  "symbol": "$SPX",
+  "startDate": "2026-01-02T08:30:00.000000",
+  "endDate": "2026-01-09T15:00:00.000000",
+  "predictionHorizon": 60,
+  "modelType": "lstm",
+  "numEpochs": 50,
+  "batchSize": 32,
+  "learningRate": 0.001,
+  "l2Regularization": 0.0001,
+  "seed": 137,
+  "trainRatio": 0.7,
+  "validationRatio": 0.15,
+  "earlyStoppingPatience": 10,
+  "useLearningRateDecay": true,
+  "useTimeSeries": true,
+  "sequenceLength": 15,
+  "numSamples": 2340
+}

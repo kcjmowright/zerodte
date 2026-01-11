@@ -2,15 +2,17 @@
 
 ## Data Capture
 
-Capture `TotalGEX` every 15 minutes during the trading day from 8:30 AM CST to 3:00 PM CST inclusive.
+Capture 0DTE `TotalGEX` for the $SPX, QQQ, IWM and SPY every minute during the trading day from 8:30 AM CST to 3:00 PM CST inclusive.
 
 
 ## Analyze
 
-At 8:45 AM CST, analyze GEX data.
-Identify support and resistance levels based on GEX.  
-Support is the put wall and the highest absolute GEX below the current strike price.
-Resistance is the call wall and the highest absolute GEX above the current strike price.
+At 8:45 AM CST, 12:00 PM and 1:00 PM analyze GEX data.
+Identify support and resistance levels based on GEX.
+If total GEX is positive,  major support is the flip point and the highest absolute GEX below the current strike price,
+while major resistance is the call wall and the highest absolute GEX above the current strike price.
+If total GEX is negative, major support is the put wall and the highest absolute GEX below the strike price, while
+major resistance is the flip point and the largest absolute GEX above the strike price.
 
 ## Trade
 

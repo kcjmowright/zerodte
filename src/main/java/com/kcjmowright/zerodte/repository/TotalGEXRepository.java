@@ -14,10 +14,10 @@ public interface TotalGEXRepository extends JpaRepository<TotalGEXEntity, Long> 
   @Query(value = "SELECT tg.created FROM TotalGEXEntity tg WHERE tg.symbol = :symbol AND tg.created between :start and :end ORDER BY tg.created")
   List<LocalDateTime> findCreatedBySymbolAndCreatedBetween(String symbol, LocalDateTime start, LocalDateTime end);
 
-  Stream<TotalGEXEntity> getTotalGEXEntityBySymbolAndCreatedBetween(String symbol, LocalDateTime start, LocalDateTime end);
+  List<TotalGEXEntity> getTotalGEXEntityBySymbolAndCreatedBetween(String symbol, LocalDateTime start, LocalDateTime end);
 
   default List<TotalGEX> getTotalGEXBySymbolBetween(String symbol, LocalDateTime start, LocalDateTime end) {
-    return getTotalGEXEntityBySymbolAndCreatedBetween(symbol, start, end).map(TotalGEXEntity::getData).toList();
+    return getTotalGEXEntityBySymbolAndCreatedBetween(symbol, start, end).stream().map(TotalGEXEntity::getData).toList();
   }
 
   TotalGEXEntity findBySymbolAndCreated(String symbol, LocalDateTime created);

@@ -21,6 +21,8 @@ schwab-api:
     redirect-uri: https://127.0.0.1:8443/oauth2/schwab/code
 
 zerodte:
+  model:
+    path: '/path/to/model.bin'
   agent:
     accountNumber: 'EXAMPLE_ACCOUNT_NUMBER'
     call:

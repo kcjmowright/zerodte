@@ -16,6 +16,7 @@ import org.deeplearning4j.util.ModelSerializer;
 import org.nd4j.evaluation.regression.RegressionEvaluation;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -26,12 +27,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static java.util.stream.Collectors.toList;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class GEXModelTrainer {
+
+  @Value("${zerodte.model.path:./data/model.bin}")
+  private String modelPath;
 
   private final GEXDataPreprocessor preprocessor;
   private final GEXModelBuilder modelBuilder;
@@ -44,35 +46,30 @@ public class GEXModelTrainer {
   public TrainingResult trainModel(TrainingConfig config) throws IOException {
     log.info("Starting model training with config: {}", config);
 
-    // 1. Load and prepare data
+    log.info("1. Load and prepare data");
     List<TotalGEX> snapshots = dataRepository.getTotalGEXBySymbolBetween(
         config.getSymbol(),
         config.getStartDate(),
         config.getEndDate()
     );
 
-    List<GEXFeatures> features = snapshots.stream()
-        .map(this::extractFeatures)
-        .collect(toList());
+    List<GEXFeatures> features = snapshots.stream().map(this::extractFeatures).toList();
 
-    // 2. Create dataset
-    DataSet fullDataSet;
-    if (config.isUseTimeSeries()) {
-      fullDataSet = preprocessor.createTimeSeriesDataSet(
+    log.info("2. Create dataset");
+    DataSet fullDataSet = config.getUseTimeSeries() ?
+      preprocessor.createTimeSeriesDataSet(
           snapshots,
           features,
           config.getSequenceLength(),
           config.getPredictionHorizon()
-      );
-    } else {
-      fullDataSet = preprocessor.createDataSet(
+      ) :
+      preprocessor.createDataSet(
           snapshots,
           features,
           config.getPredictionHorizon()
       );
-    }
 
-    // 3. Split data
+    log.info("3. Split data");
     Map<String, DataSet> splits = preprocessor.splitDataSet(
         fullDataSet,
         config.getTrainRatio(),
@@ -86,10 +83,10 @@ public class GEXModelTrainer {
     log.info("Train samples: {}, Valid samples: {}, Test samples: {}",
         trainSet.numExamples(), validSet.numExamples(), testSet.numExamples());
 
-    // 4. Build model
+    log.info("4. Build model");
     MultiLayerNetwork model = buildModel(config, preprocessor.getNumFeatures());
 
-    // 5. Training loop with early stopping
+    log.info("5. Training loop with early stopping");
     TrainingResult result = trainWithEarlyStopping(
         model,
         trainSet,
@@ -98,26 +95,38 @@ public class GEXModelTrainer {
         config
     );
 
-    // 6. Save model
-    if (config.getModelSavePath() != null) {
-      saveModel(model, config.getModelSavePath());
-      result.setModelPath(config.getModelSavePath());
-    }
+    log.info("6. Save model");
+    saveModel(model, modelPath);
     return result;
   }
 
   private MultiLayerNetwork buildModel(TrainingConfig config, int numFeatures) {
     return switch (config.getModelType()) {
-      case "feedforward" -> modelBuilder.buildFeedForwardNetwork(numFeatures, config.getSeed());
-      case "lstm" -> modelBuilder.buildLSTMNetwork(numFeatures, config.getSequenceLength(), config.getSeed());
-      case "deep" -> modelBuilder.buildDeepNetwork(numFeatures, config.getSeed());
+      case "feedforward" -> modelBuilder.buildFeedForwardNetwork(
+          numFeatures,
+          config.getSeed(),
+          config.getLearningRate(),
+          config.getL2Regularization());
+      case "lstm" -> modelBuilder.buildLSTMNetwork(
+          numFeatures,
+          config.getSequenceLength(),
+          config.getSeed(),
+          config.getLearningRate(),
+          config.getL2Regularization());
+      case "deep" -> modelBuilder.buildDeepNetwork(
+          numFeatures,
+          config.getSeed(),
+          config.getLearningRate(),
+          config.getL2Regularization());
       case "bidirectional" -> modelBuilder.buildBidirectionalLSTM(numFeatures, config.getSeed());
       case "attention" -> modelBuilder.buildAttentionNetwork(numFeatures, config.getSeed());
       default -> modelBuilder.buildRecommendedModel(
           numFeatures,
           config.getNumSamples(),
-          config.isUseTimeSeries(),
-          config.getSeed()
+          config.getUseTimeSeries(),
+          config.getSeed(),
+          config.getLearningRate(),
+          config.getL2Regularization()
       );
     };
   }
@@ -172,7 +181,7 @@ public class GEXModelTrainer {
       }
 
       // Learning rate decay
-      if (config.isUseLearningRateDecay() && epoch % 10 == 0 && epoch > 0) {
+      if (config.getUseLearningRateDecay() && epoch % 10 == 0 && epoch > 0) {
         double newLr = config.getLearningRate() * 0.95;
         log.info("Decaying learning rate to {}", newLr);
         // Note: In practice, you'd update the updater here
@@ -361,19 +370,7 @@ public class GEXModelTrainer {
    */
   public void saveModel(MultiLayerNetwork model, String path) throws IOException {
     File modelFile = new File(path);
-    // @todo save in database
     ModelSerializer.writeModel(model, modelFile, true);
     log.info("Model saved to {}", path);
-  }
-
-  /**
-   * Load trained model from disk
-   */
-  public MultiLayerNetwork loadModel(String path) throws IOException {
-    File modelFile = new File(path);
-    // @todo read from database
-    MultiLayerNetwork model = ModelSerializer.restoreMultiLayerNetwork(modelFile);
-    log.info("Model loaded from {}", path);
-    return model;
   }
 }

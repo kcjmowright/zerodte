@@ -11,6 +11,7 @@ import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.util.ModelSerializer;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -23,8 +24,10 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class DL4JGEXPredictor {
+public class GEXPredictor {
 
+  @Value("${zerodte.model.path:./data/model.bin}")
+  private String modelPath;
   private final GEXDataPreprocessor preprocessor;
   private final GEXFeatureExtractor featureExtractor;
   private final TotalGEXRepository totalGEXRepository;
@@ -33,9 +36,14 @@ public class DL4JGEXPredictor {
   /**
    * Initialize predictor with trained model
    */
-  public void loadModel(String modelPath) throws java.io.IOException {
-    this.model = ModelSerializer.restoreMultiLayerNetwork(new java.io.File(modelPath));
-    log.info("Model loaded successfully from {}", modelPath);
+  public void loadModel(String modelPath) {
+    try {
+      this.model = ModelSerializer.restoreMultiLayerNetwork(new java.io.File(modelPath));
+      log.info("Model loaded successfully from {}", modelPath);
+    } catch (Exception e) {
+      log.error("Unable to load model {} due to {}", modelPath, e.getMessage());
+      throw new IllegalStateException("Unable to load model", e);
+    }
   }
 
   public void setModel(MultiLayerNetwork model) {
@@ -48,7 +56,7 @@ public class DL4JGEXPredictor {
    */
   public PricePrediction predict(TotalGEX currentSnapshot, List<TotalGEX> historicalSnapshots, int minutesAhead) {
     if (model == null) {
-      throw new IllegalStateException("Model not loaded. Call loadModel() first.");
+      loadModel(modelPath);
     }
 
     // Extract features

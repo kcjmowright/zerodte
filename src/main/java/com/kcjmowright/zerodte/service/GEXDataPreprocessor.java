@@ -92,7 +92,8 @@ public class GEXDataPreprocessor {
           currentSnapshot.getSpotPrice(),
           futureSnapshot.getSpotPrice()
       );
-      labelVector.putScalar(i, 0, priceChange);
+
+      labelVector.putScalar(new int[]{i, 0}, priceChange);
     }
 
     DataSet dataSet = new DataSet(featureMatrix, labelVector);
@@ -109,7 +110,7 @@ public class GEXDataPreprocessor {
   }
 
   /**
-   * Create time series dataset for LSTM
+   * Create time series dataset for LSTM - Using 3D labels with masking
    */
   public DataSet createTimeSeriesDataSet(List<TotalGEX> snapshots,
                                          List<GEXFeatures> features,
@@ -119,9 +120,15 @@ public class GEXDataPreprocessor {
     int numSamples = snapshots.size() - sequenceLength - predictionHorizon;
     int numFeatures = featureIndices.size();
 
-    // [samples, features, timeSteps]
+    // Features: [samples, features, timeSteps]
     INDArray featureTensor = Nd4j.create(numSamples, numFeatures, sequenceLength);
-    INDArray labelVector = Nd4j.create(numSamples, 1);
+
+    // FIX: Create 3D labels matching RNN output [samples, outputs, timeSteps]
+    // But only the LAST time step has the actual label (others are masked)
+    INDArray labelTensor = Nd4j.create(numSamples, 1, sequenceLength);
+
+    // Create mask: only last time step is used
+    INDArray labelMask = Nd4j.zeros(numSamples, sequenceLength);
 
     for (int i = 0; i < numSamples; i++) {
       // Get sequence of features
@@ -143,10 +150,15 @@ public class GEXDataPreprocessor {
           currentSnapshot.getSpotPrice(),
           futureSnapshot.getSpotPrice()
       );
-      labelVector.putScalar(i, 0, priceChange);
+
+      // Only set label for LAST time step
+      labelTensor.putScalar(new int[]{i, 0, sequenceLength - 1}, priceChange);
+
+      // Only last time step is active in mask
+      labelMask.putScalar(new int[]{i, sequenceLength - 1}, 1.0);
     }
 
-    DataSet dataSet = new DataSet(featureTensor, labelVector);
+    DataSet dataSet = new DataSet(featureTensor, labelTensor, null, labelMask);
 
     // Normalize
     featureScaler.fit(dataSet);
