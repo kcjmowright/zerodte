@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import Loading from "./Loading.jsx";
 import Alert from "./Alert.jsx";
+import CustomTable from "./CustomTable.jsx";
+import Loading from "./Loading.jsx";
 import formatters from "./utils/formatters.js";
 
 function Movers() {
@@ -87,44 +88,34 @@ function Movers() {
                             if (error) {
                                 return <Alert message={error.message} />;
                             }
-                            return <div>
-                                <table className="w-full border-collapse border border-gray-400 bg-white text-sm dark:border-gray-500 dark:bg-gray-800">
-                                    <thead className="bg-gray-50 dark:bg-gray-700">
-                                        <tr>
-                                            <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">Last Price</th>
-                                            <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">Net Change</th>
-                                            <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">Net % Change</th>
-                                            <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">Total Volume</th>
-                                            <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">Volume</th>
-                                            <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">Market Share</th>
-                                            <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">Trades</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                    {
-                                        movers.sort((a, b) => b.netChange - a.netChange).map(mover => {
-                                            return <>
-                                                <tr>
-                                                    <td className="border bg-gray-50 dark:bg-gray-700 border-gray-300 p-4 text-gray-500 dark:border-gray-700 dark:text-gray-400" colSpan="7">
-                                                        <span className="font-bold text-lg">{mover.description}</span>( {mover.symbol} )
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="border border-gray-300 p-4 text-gray-500 dark:border-gray-700 dark:text-gray-400">{formatters.currency.format(mover.lastPrice)}</td>
-                                                    <td className="border border-gray-300 p-4 text-gray-500 dark:border-gray-700 dark:text-gray-400">{formatters.currency.format(mover.netChange)}</td>
-                                                    <td className="border border-gray-300 p-4 text-gray-500 dark:border-gray-700 dark:text-gray-400">{formatters.percentage.format(mover.netPercentChange / 100.0)}</td>
-                                                    <td className="border border-gray-300 p-4 text-gray-500 dark:border-gray-700 dark:text-gray-400">{formatters.number.format(mover.totalVolume)}</td>
-                                                    <td className="border border-gray-300 p-4 text-gray-500 dark:border-gray-700 dark:text-gray-400">{formatters.number.format(mover.volume)}</td>
-                                                    <td className="border border-gray-300 p-4 text-gray-500 dark:border-gray-700 dark:text-gray-400">{mover.marketShare}</td>
-                                                    <td className="border border-gray-300 p-4 text-gray-500 dark:border-gray-700 dark:text-gray-400">{mover.trades}</td>
-                                                </tr>
-                                            </>
-                                        })
-                                    }
-                                    </tbody>
-                                </table>
-
-                            </div>;
+                            const headers = [
+                                "Last Price",
+                                "Net Change",
+                                "Net % Change",
+                                "Total Volume",
+                                "Volume",
+                                "Market Share",
+                                "Trades"
+                            ];
+                            const rows = movers.sort((a, b) => b.netChange - a.netChange).map(row => [
+                                row.lastPrice,
+                                row.netChange,
+                                row.netPercentChange / 100.0,
+                                row.totalVolume,
+                                row.volume,
+                                row.marketShare,
+                                row.trades
+                            ]);
+                            const cellFormatters = [
+                                (cell) => formatters.currency.format(cell),
+                                (cell) => formatters.currency.format(cell),
+                                (cell) => formatters.percentage.format(cell),
+                                (cell) => formatters.number.format(cell),
+                                (cell) => formatters.number.format(cell),
+                                (cell) => cell,
+                                (cell) => cell,
+                            ];
+                            return <CustomTable headers={headers} rowData={rows} cellFormatters={cellFormatters} />;
                         })()
                     }
                 </div>
