@@ -177,14 +177,14 @@ public class GEXModelBuilder {
    * Bidirectional LSTM
    * Best for: Understanding both past and future context
    */
-  public MultiLayerNetwork buildBidirectionalLSTM(int numInputs, int seed) {
+  public MultiLayerNetwork buildBidirectionalLSTM(int numInputs, int seed, double learningRate, double l2) {
     log.info("Building Bidirectional LSTM with {} inputs", numInputs);
 
     MultiLayerConfiguration config = new NeuralNetConfiguration.Builder()
         .seed(seed)
         .weightInit(WeightInit.XAVIER)
-        .updater(new Adam(0.001))
-        .l2(0.0001)
+        .updater(new Adam(learningRate))
+        .l2(l2)
         .list()
         // Bidirectional LSTM
         .layer(new Bidirectional(new LSTM.Builder()
@@ -219,14 +219,14 @@ public class GEXModelBuilder {
    * Attention-based Network
    * Best for: Focusing on most important GEX features
    */
-  public MultiLayerNetwork buildAttentionNetwork(int numInputs, int seed) {
+  public MultiLayerNetwork buildAttentionNetwork(int numInputs, int seed, double learningRate, double l2) {
     log.info("Building Attention Network with {} inputs", numInputs);
 
     MultiLayerConfiguration config = new NeuralNetConfiguration.Builder()
         .seed(seed)
         .weightInit(WeightInit.XAVIER)
-        .updater(new Adam(0.001))
-        .l2(0.0001)
+        .updater(new Adam(learningRate))
+        .l2(l2)
         .list()
         // Feature extraction
         .layer(new DenseLayer.Builder()

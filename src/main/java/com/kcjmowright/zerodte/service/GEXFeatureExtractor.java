@@ -35,19 +35,16 @@ public class GEXFeatureExtractor {
   }
 
   private BigDecimal calculateDistance(BigDecimal current, BigDecimal target) {
-    if (target == null) return BigDecimal.ZERO;
-    return target.subtract(current)
-        .divide(current, 6, RoundingMode.HALF_UP)
-        .multiply(new BigDecimal("100")); // percentage
+    return target == null ?
+        BigDecimal.ZERO:
+        target.subtract(current).divide(current, 6, RoundingMode.HALF_UP).multiply(new BigDecimal("100")); // percentage
   }
 
   private BigDecimal calculateGEXRatio(TotalGEX snapshot) {
     BigDecimal putGEX = snapshot.getTotalPutGEX().abs();
-    if (putGEX.compareTo(BigDecimal.ZERO) == 0) {
-      return BigDecimal.valueOf(999);
-    }
-    return snapshot.getTotalCallGEX()
-        .divide(putGEX, 4, RoundingMode.HALF_UP);
+    return putGEX.compareTo(BigDecimal.ZERO) == 0 ?
+        BigDecimal.valueOf(999) :
+        snapshot.getTotalCallGEX().divide(putGEX, 4, RoundingMode.HALF_UP);
   }
 
   private BigDecimal calculateGEXSkew(TotalGEX snapshot) {
@@ -69,33 +66,23 @@ public class GEXFeatureExtractor {
         .map(BigDecimal::abs)
         .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-    if (totalAbsGEX.compareTo(BigDecimal.ZERO) == 0) {
-      return BigDecimal.ZERO;
-    }
-
-    return atmGEX.divide(totalAbsGEX, 4, RoundingMode.HALF_UP);
+    return totalAbsGEX.compareTo(BigDecimal.ZERO) == 0 ?
+        BigDecimal.ZERO :
+        atmGEX.divide(totalAbsGEX, 4, RoundingMode.HALF_UP);
   }
 
+  /**
+   * Herfindahl index (also called the Herfindahl-Hirschman Index or HHI) is a measure of market concentration.
+   * Square each values share (expressed as a percentage or decimal) and add them all together.
+   * @param snapshot {@link TotalGEX}
+   * @return the concentration value.
+   */
   private BigDecimal calculateConcentration(TotalGEX snapshot) {
-    // Herfindahl-like index for GEX concentration
-    BigDecimal totalGEX = snapshot.getGexPerStrike().values()
-        .stream()
-        .map(OptionContractGEX::getTotalGEX)
-        .map(BigDecimal::abs)
-        .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-    if (totalGEX.compareTo(BigDecimal.ZERO) == 0) {
-      return BigDecimal.ZERO;
-    }
-
-    return snapshot.getGexPerStrike().values()
-        .stream()
-        .map(OptionContractGEX::getTotalGEX)
-        .map(gex -> {
-          BigDecimal share = gex.abs().divide(totalGEX, 6, RoundingMode.HALF_UP);
-          return share.multiply(share);
-        })
-        .reduce(BigDecimal.ZERO, BigDecimal::add);
+    return snapshot.getTotalGEX().compareTo(BigDecimal.ZERO) == 0 ?
+        BigDecimal.ZERO :
+        snapshot.getGexPerStrike().values().stream()
+          .map(gex -> gex.getTotalGEX().divide(snapshot.getTotalGEX(), 6, RoundingMode.HALF_UP).pow(2))
+          .reduce(BigDecimal.ZERO, BigDecimal::add);
   }
 
   private BigDecimal calculateRelativePosition(TotalGEX snapshot) {
@@ -104,18 +91,15 @@ public class GEXFeatureExtractor {
     BigDecimal callWall = snapshot.getCallWall();
     BigDecimal current = snapshot.getSpotPrice();
 
-    if (callWall.compareTo(putWall) == 0) {
-      return BigDecimal.valueOf(0.5);
-    }
-
-    return current.subtract(putWall)
-        .divide(callWall.subtract(putWall), 4, RoundingMode.HALF_UP);
+    return callWall.compareTo(putWall) == 0 ?
+      BigDecimal.valueOf(0.5) :
+      current.subtract(putWall).divide(callWall.subtract(putWall), 4, RoundingMode.HALF_UP);
   }
 
   private Integer calculateMinutesToExpiry(LocalDateTime timestamp) {
-    // 0DTE options expire at 4:00 PM ET (16:00)
+    // 0DTE options expire at 3:00 PM CT (15:00)
     LocalDateTime expiry = timestamp.toLocalDate()
-        .atTime(16, 0);
+        .atTime(15, 0);
     return (int) Duration.between(timestamp, expiry).toMinutes();
   }
 
@@ -134,7 +118,7 @@ public class GEXFeatureExtractor {
     BigDecimal totalChange = BigDecimal.ZERO;
     for (int i = 1; i < recent.size(); i++) {
       BigDecimal change = recent.get(i).getSpotPrice()
-          .subtract(recent.get(i-1).getSpotPrice());
+          .subtract(recent.get(i - 1).getSpotPrice());
       totalChange = totalChange.add(change);
     }
 

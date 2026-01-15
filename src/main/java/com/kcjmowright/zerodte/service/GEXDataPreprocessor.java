@@ -4,12 +4,17 @@ import com.kcjmowright.zerodte.model.GEXFeatures;
 import com.kcjmowright.zerodte.model.TotalGEX;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
+import org.deeplearning4j.util.ModelSerializer;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.preprocessor.NormalizerMinMaxScaler;
+import org.nd4j.linalg.dataset.api.preprocessor.serializer.NormalizerSerializer;
 import org.nd4j.linalg.factory.Nd4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.io.File;
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
@@ -19,10 +24,14 @@ import java.util.Map;
 @Component
 public class GEXDataPreprocessor {
 
+  @Value("${zerodte.model.basePath:./data/}")
+  private String basePath;
   @Getter
-  private final NormalizerMinMaxScaler featureScaler = new NormalizerMinMaxScaler(0, 1);
+  private NormalizerMinMaxScaler featureScaler = new NormalizerMinMaxScaler(0, 1);
   @Getter
-  private final NormalizerMinMaxScaler targetScaler = new NormalizerMinMaxScaler(0, 1);
+  private NormalizerMinMaxScaler targetScaler = new NormalizerMinMaxScaler(0, 1);
+  @Getter
+  private boolean scalersFitted = false;
   private final Map<String, Integer> featureIndices = new HashMap<>();
 
   public GEXDataPreprocessor() {
@@ -106,6 +115,8 @@ public class GEXDataPreprocessor {
     featureScaler.transform(dataSet);
     targetScaler.transform(dataSet);
 
+    scalersFitted = true;
+
     return dataSet;
   }
 
@@ -165,7 +176,7 @@ public class GEXDataPreprocessor {
     targetScaler.fit(dataSet);
     featureScaler.transform(dataSet);
     targetScaler.transform(dataSet);
-
+    scalersFitted = true;
     return dataSet;
   }
 
@@ -230,11 +241,54 @@ public class GEXDataPreprocessor {
    * Inverse transform predictions back to original scale
    */
   public double denormalizePrediction(double normalizedValue) {
-    INDArray normalized = Nd4j.scalar(normalizedValue);
-    DataSet dataSet = new DataSet(null, normalized);
-    targetScaler.revert(dataSet);
-    INDArray denormalized = dataSet.getLabels();
-    return denormalized.getDouble(0);
+    if (!scalersFitted) {
+      throw new IllegalStateException("Scalers must be fitted first");
+    }
+
+    // Create a 2D array for the label
+    INDArray normalizedArray = Nd4j.create(new double[][]{{normalizedValue}});
+
+    // Create dataset with dummy features (same shape as training)
+    // The targetScaler only operates on labels, but needs a valid DataSet
+    INDArray dummyFeatures = Nd4j.create(1, 1);
+    DataSet tempDataset = new DataSet(dummyFeatures, normalizedArray);
+
+    // Revert modifies in-place
+    targetScaler.revert(tempDataset);
+
+    // Extract the denormalized value
+    return tempDataset.getLabels().getDouble(0, 0);
+  }
+
+  /**
+   * Inverse transform feature array back to original scale
+   */
+  public INDArray denormalizeFeatures(INDArray normalizedFeatures) {
+    if (!scalersFitted) {
+      throw new IllegalStateException("Scalers must be fitted first");
+    }
+
+    // Clone to avoid modifying original
+    INDArray cloned = normalizedFeatures.dup();
+    INDArray dummyLabels = Nd4j.create(cloned.shape()[0], 1);
+    DataSet tempDataset = new DataSet(cloned, dummyLabels);
+    featureScaler.revert(tempDataset);
+    return tempDataset.getFeatures();
+  }
+
+  /**
+   * Transform (normalize) a single prediction without fitting
+   */
+  public double normalizePrediction(double rawValue) {
+    if (!scalersFitted) {
+      throw new IllegalStateException("Scalers must be fitted first");
+    }
+
+    INDArray rawArray = Nd4j.create(new double[][]{{rawValue}});
+    INDArray dummyFeatures = Nd4j.create(1, 1);
+    DataSet tempDataset = new DataSet(dummyFeatures, rawArray);
+    targetScaler.transform(tempDataset);
+    return tempDataset.getLabels().getDouble(0, 0);
   }
 
   /**
@@ -264,6 +318,78 @@ public class GEXDataPreprocessor {
 
   public int getNumFeatures() {
     return featureIndices.size();
+  }
+
+  /**
+   * Save scalers to disk
+   */
+  public void saveScalers() {
+    if (!scalersFitted) {
+      throw new IllegalStateException("Scalers must be fitted before saving");
+    }
+
+    File featureFile = new File(basePath + "_feature_scaler.bin");
+    File targetFile = new File(basePath + "_target_scaler.bin");
+    try {
+      NormalizerSerializer.getDefault().write(featureScaler, featureFile);
+      NormalizerSerializer.getDefault().write(targetScaler, targetFile);
+      log.debug("Scalers saved to {} and {}", featureFile, targetFile);
+      log.info("Scalars successfully saved");
+    } catch (Exception e) {
+      throw new IllegalStateException("Unable to save scalars due to : %s".formatted(e.getMessage()), e);
+    }
+  }
+
+  /**
+   * Load scalers from disk
+   */
+  public void loadScalers() {
+    File featureFile = new File(basePath + "_feature_scaler.bin");
+    File targetFile = new File(basePath + "_target_scaler.bin");
+
+    if (!featureFile.exists() || !targetFile.exists()) {
+      throw new IllegalStateException("Scaler files not found at: " + basePath);
+    }
+
+    try {
+      featureScaler = NormalizerSerializer.getDefault().restore(featureFile);
+      targetScaler = NormalizerSerializer.getDefault().restore(targetFile);
+      scalersFitted = true;
+      log.debug("Scalers loaded from {} and {}", featureFile, targetFile);
+      log.info("Scalars successfully loaded");
+    } catch (Exception e) {
+      throw new IllegalStateException("Unable to load scalars due to: %s".formatted(e.getMessage()), e);
+    }
+  }
+
+
+  /**
+   * Save trained model to disk
+   */
+  public void saveModel(MultiLayerNetwork model) {
+    File modelFile = new File(basePath + "model.bin");
+    try {
+      ModelSerializer.writeModel(model, modelFile, true);
+      log.debug("Model saved to {}", modelFile.getAbsolutePath());
+      log.info("Model saved successfully");
+    } catch (Exception e) {
+      throw new IllegalStateException("Unable to save model due to %s".formatted(e.getMessage()), e);
+    }
+  }
+
+  /**
+   * Initialize predictor with trained model
+   */
+  public MultiLayerNetwork loadModel() {
+    File file = new File(basePath + "model.bin");
+    try {
+      MultiLayerNetwork model = ModelSerializer.restoreMultiLayerNetwork(file);
+      log.debug("Model loaded from {}", file.getAbsolutePath());
+      log.info("Successfully loaded model");
+      return model;
+    } catch (Exception e) {
+      throw new IllegalStateException("Unable to load model data due to %s".formatted(e.getMessage()), e);
+    }
   }
 
 }

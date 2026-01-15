@@ -33,19 +33,19 @@ class AIController {
   private final GammaExposureService gammaExposureService;
 
   @PostMapping("/train")
-  public Mono<TrainingResult> trainModel(@RequestBody TrainingConfig config) throws Exception {
+  public Mono<TrainingResult> trainModel(@RequestBody TrainingConfig config) {
     log.info("Received training request: {}", config);
     TrainingResult result = trainer.trainModel(config);
     return Mono.just(result);
   }
 
-  @PostMapping("/predict/{symbol}")
+  @GetMapping("/predict/{symbol}")
   public Mono<PricePrediction> predict(@PathVariable String symbol, @RequestParam int minutesAhead) {
     PricePrediction prediction = predictor.predictLive(symbol, minutesAhead);
     return Mono.just(prediction);
   }
 
-  @PostMapping("/predict/multi-horizon/{symbol}")
+  @GetMapping("/predict/multi-horizon/{symbol}")
   public Mono<Map<Integer, PricePrediction>> predictMultiHorizon(@PathVariable String symbol) {
     TotalGEX current = gammaExposureService.getLatestBySymbol(symbol);
     List<TotalGEX> history = gammaExposureService.getMostRecentBySymbol(symbol, 1000);

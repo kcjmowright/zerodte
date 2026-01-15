@@ -8,10 +8,9 @@ import com.kcjmowright.zerodte.repository.TotalGEXRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
-import org.deeplearning4j.util.ModelSerializer;
 import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.factory.Nd4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -25,26 +24,10 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class GEXPredictor {
-
-  @Value("${zerodte.model.path:./data/model.bin}")
-  private String modelPath;
   private final GEXDataPreprocessor preprocessor;
   private final GEXFeatureExtractor featureExtractor;
   private final TotalGEXRepository totalGEXRepository;
   private MultiLayerNetwork model;
-
-  /**
-   * Initialize predictor with trained model
-   */
-  public void loadModel(String modelPath) {
-    try {
-      this.model = ModelSerializer.restoreMultiLayerNetwork(new java.io.File(modelPath));
-      log.info("Model loaded successfully from {}", modelPath);
-    } catch (Exception e) {
-      log.error("Unable to load model {} due to {}", modelPath, e.getMessage());
-      throw new IllegalStateException("Unable to load model", e);
-    }
-  }
 
   public void setModel(MultiLayerNetwork model) {
     this.model = model;
@@ -56,33 +39,65 @@ public class GEXPredictor {
    */
   public PricePrediction predict(TotalGEX currentSnapshot, List<TotalGEX> historicalSnapshots, int minutesAhead) {
     if (model == null) {
-      loadModel(modelPath);
+      model = preprocessor.loadModel();
+      preprocessor.loadScalers();
     }
 
-    // Extract features
-    GEXFeatures features = featureExtractor.extractFeatures(currentSnapshot, historicalSnapshots);
+    // Need at least sequenceLength snapshots
+    int sequenceLength = 15; // Should match training
+    if (historicalSnapshots.size() < sequenceLength) {
+      throw new IllegalArgumentException("Need at least " + sequenceLength + " historical snapshots");
+    }
 
-    // Convert to feature vector
-    double[] featureVector = convertToFeatureVector(currentSnapshot, features);
-    INDArray input = Nd4j.create(featureVector).reshape(1, featureVector.length);
+    // Get last sequenceLength snapshots
+    List<TotalGEX> sequence = historicalSnapshots.subList(
+        historicalSnapshots.size() - sequenceLength,
+        historicalSnapshots.size()
+    );
+
+    // Extract features for sequence
+    int numFeatures = preprocessor.getNumFeatures();
+    INDArray input = Nd4j.create(1, numFeatures, sequenceLength);
+
+    for (int t = 0; t < sequenceLength; t++) {
+      TotalGEX snapshot = sequence.get(t);
+      GEXFeatures features = featureExtractor.extractFeatures(
+          snapshot,
+          historicalSnapshots.subList(0, historicalSnapshots.size() - sequenceLength + t)
+      );
+
+      double[] featureVector = convertToFeatureVector(snapshot, features);
+
+      for (int f = 0; f < numFeatures; f++) {
+        input.putScalar(new int[]{0, f, t}, featureVector[f]);
+      }
+    }
 
     // Normalize input
-    preprocessor.getFeatureScaler().transform(input);
+    DataSet tempDataset = new DataSet(input, null);
+    preprocessor.getFeatureScaler().transform(tempDataset);
+    INDArray normalizedInput = tempDataset.getFeatures();
 
-    // Make prediction
-    INDArray output = model.output(input);
+    // Make prediction - output is 3D [1, 1, sequenceLength]
+    INDArray output = model.output(normalizedInput);
 
-    // Denormalize output
-    double normalizedPrediction = output.getDouble(0);
+    // Extract last time step prediction and denormalize
+    double normalizedPrediction = output.getDouble(0, 0, sequenceLength - 1);
     double priceChange = preprocessor.denormalizePrediction(normalizedPrediction);
 
     // Calculate predicted price
     BigDecimal currentPrice = currentSnapshot.getSpotPrice();
-    BigDecimal predictedPrice = currentPrice.add(currentPrice.multiply(BigDecimal.valueOf(priceChange / 100)));
+    BigDecimal predictedPrice = currentPrice.add(
+        currentPrice.multiply(BigDecimal.valueOf(priceChange / 100.0))
+    );
 
     // Determine direction and confidence
     String direction = determineDirection(priceChange);
-    BigDecimal confidence = calculateConfidence(output, features);
+    GEXFeatures lastFeatures = featureExtractor.extractFeatures(
+        currentSnapshot,
+        historicalSnapshots
+    );
+    BigDecimal confidence = calculateConfidence(output, lastFeatures);
 
     return PricePrediction.builder()
         .predictionTime(currentSnapshot.getTimestamp())
@@ -102,9 +117,7 @@ public class GEXPredictor {
     List<PricePrediction> predictions = new ArrayList<>();
     for (int i = 10; i < snapshots.size(); i++) {
       TotalGEX current = snapshots.get(i);
-      List<TotalGEX> history = snapshots.subList(
-          Math.max(0, i - 60), i
-      );
+      List<TotalGEX> history = snapshots.subList(Math.max(0, i - 60), i);
 
       try {
         PricePrediction prediction = predict(current, history, minutesAhead);
@@ -170,17 +183,15 @@ public class GEXPredictor {
     double upper95 = predictions.get((int) (numSamples * 0.975));
 
     BigDecimal currentPrice = currentSnapshot.getSpotPrice();
-    BigDecimal predictedPrice = currentPrice.add(
-        currentPrice.multiply(BigDecimal.valueOf(mean / 100))
-    );
+    BigDecimal predictedPrice = currentPrice.add(currentPrice.multiply(BigDecimal.valueOf(mean / 100.0)));
 
     return ProbabilisticPrediction.builder()
         .predictionTime(currentSnapshot.getTimestamp())
         .targetTime(currentSnapshot.getTimestamp().plusMinutes(minutesAhead))
         .meanPrediction(predictedPrice)
         .stdDeviation(BigDecimal.valueOf(std))
-        .confidence95Lower(currentPrice.multiply(BigDecimal.valueOf(1 + lower95 / 100)))
-        .confidence95Upper(currentPrice.multiply(BigDecimal.valueOf(1 + upper95 / 100)))
+        .confidence95Lower(currentPrice.multiply(BigDecimal.valueOf(1 + lower95 / 100.0)))
+        .confidence95Upper(currentPrice.multiply(BigDecimal.valueOf(1 + upper95 / 100.0)))
         .build();
   }
 
@@ -208,9 +219,16 @@ public class GEXPredictor {
 
     // For each feature, permute and measure performance degradation
     String[] featureNames = {
-        "distanceToCallWall", "distanceToPutWall", "distanceToFlipPoint",
-        "callPutGEXRatio", "netGEX", "gexSkew", "concentrationIndex",
-        "relativePosition", "minutesToExpiry", "priceVelocity"
+        "distanceToCallWall",
+        "distanceToPutWall",
+        "distanceToFlipPoint",
+        "callPutGEXRatio",
+        "netGEX",
+        "gexSkew",
+        "concentrationIndex",
+        "relativePosition",
+        "minutesToExpiry",
+        "priceVelocity"
     };
 
     for (String featureName : featureNames) {
@@ -249,9 +267,7 @@ public class GEXPredictor {
   }
 
   private String determineDirection(double priceChange) {
-    if (priceChange > 0.1) return "UP";
-    if (priceChange < -0.1) return "DOWN";
-    return "NEUTRAL";
+    return (priceChange > 0.1) ? "UP" : (priceChange < -0.1) ? "DOWN" : "NEUTRAL";
   }
 
   private BigDecimal calculateConfidence(INDArray output, GEXFeatures features) {
@@ -263,8 +279,7 @@ public class GEXPredictor {
   }
 
   private String determineRegime(TotalGEX snapshot) {
-    return snapshot.getSpotPrice().compareTo(snapshot.getFlipPoint()) > 0
-        ? "POSITIVE_GEX" : "NEGATIVE_GEX";
+    return snapshot.getSpotPrice().compareTo(snapshot.getFlipPoint()) > 0 ? "POSITIVE_GEX" : "NEGATIVE_GEX";
   }
 
   private double calculateStdDev(List<Double> values, double mean) {
@@ -275,19 +290,15 @@ public class GEXPredictor {
     return Math.sqrt(variance);
   }
 
-  private double calculateMeanError(List<PricePrediction> predictions,
-                                    List<TotalGEX> snapshots,
-                                    int horizon) {
+  private double calculateMeanError(List<PricePrediction> predictions, List<TotalGEX> snapshots, int horizon) {
     double totalError = 0.0;
     int count = 0;
-
     for (int i = 0; i < predictions.size() && i + horizon < snapshots.size(); i++) {
       BigDecimal predicted = predictions.get(i).getPredictedPrice();
       BigDecimal actual = snapshots.get(i + horizon).getSpotPrice();
       totalError += predicted.subtract(actual).abs().doubleValue();
       count++;
     }
-
-    return count > 0 ? totalError / count : 0.0;
+    return count > 0 ? (totalError / count) : 0.0;
   }
 }

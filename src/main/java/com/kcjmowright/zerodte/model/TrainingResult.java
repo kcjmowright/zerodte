@@ -13,7 +13,7 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class TrainingResult {
-  private MultiLayerNetwork model;
+  //private MultiLayerNetwork model;
   private int bestEpoch;
   private double bestValidationLoss;
   private List<Double> trainLosses;

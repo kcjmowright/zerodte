@@ -11,7 +11,6 @@ import com.kcjmowright.zerodte.model.TrainingResult;
 import com.kcjmowright.zerodte.repository.TotalGEXRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -25,10 +24,9 @@ import java.util.Map;
 @Component
 @RequiredArgsConstructor
 public class GEXDeepLearning {
-  @Value("${zerodte.model.path:./data/model.bin}")
-  private String modelPath;
   private final GEXModelTrainer trainer;
   private final GEXPredictor predictor;
+  private final GEXDataPreprocessor preprocessor;
   private final TotalGEXRepository totalGEXRepository;
 
   //@Override
@@ -95,7 +93,7 @@ public class GEXDeepLearning {
     visualizeTrainingProgress(result);
 
     // 5. Make predictions with trained model
-    predictor.setModel(result.getModel());
+    predictor.setModel(preprocessor.loadModel());
 
     TotalGEX testSnapshot = totalGEXRepository.getLatestBySymbol(symbol);
     List<TotalGEX> history = totalGEXRepository.getMostRecentBySymbol(symbol, 60);
@@ -182,11 +180,11 @@ public class GEXDeepLearning {
   /**
    * Example 4: Live prediction service
    */
-  public void livePredictionExample(String symbol) throws Exception {
+  public void livePredictionExample(String symbol) {
     log.info("=== Example 4: Live Predictions ===");
 
     // Load trained model
-    predictor.loadModel(modelPath);
+    predictor.setModel(preprocessor.loadModel());
 
     // Make multi-horizon predictions
     TotalGEX current = totalGEXRepository.getLatestBySymbol(symbol);

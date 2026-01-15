@@ -12,17 +12,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.deeplearning4j.datasets.iterator.IteratorDataSetIterator;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
-import org.deeplearning4j.util.ModelSerializer;
 import org.nd4j.evaluation.regression.RegressionEvaluation;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,10 +27,6 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class GEXModelTrainer {
-
-  @Value("${zerodte.model.path:./data/model.bin}")
-  private String modelPath;
-
   private final GEXDataPreprocessor preprocessor;
   private final GEXModelBuilder modelBuilder;
   private final TotalGEXRepository dataRepository;
@@ -43,7 +35,7 @@ public class GEXModelTrainer {
   /**
    * Train model with early stopping and validation
    */
-  public TrainingResult trainModel(TrainingConfig config) throws IOException {
+  public TrainingResult trainModel(TrainingConfig config)  {
     log.info("Starting model training with config: {}", config);
 
     log.info("1. Load and prepare data");
@@ -96,7 +88,8 @@ public class GEXModelTrainer {
     );
 
     log.info("6. Save model");
-    saveModel(model, modelPath);
+    preprocessor.saveModel(model);
+    preprocessor.saveScalers();
     return result;
   }
 
@@ -118,8 +111,16 @@ public class GEXModelTrainer {
           config.getSeed(),
           config.getLearningRate(),
           config.getL2Regularization());
-      case "bidirectional" -> modelBuilder.buildBidirectionalLSTM(numFeatures, config.getSeed());
-      case "attention" -> modelBuilder.buildAttentionNetwork(numFeatures, config.getSeed());
+      case "bidirectional" -> modelBuilder.buildBidirectionalLSTM(
+          numFeatures,
+          config.getSeed(),
+          config.getLearningRate(),
+          config.getL2Regularization());
+      case "attention" -> modelBuilder.buildAttentionNetwork(
+          numFeatures,
+          config.getSeed(),
+          config.getLearningRate(),
+          config.getL2Regularization());
       default -> modelBuilder.buildRecommendedModel(
           numFeatures,
           config.getNumSamples(),
@@ -162,8 +163,7 @@ public class GEXModelTrainer {
       double validLoss = calculateMSE(validPredictions, validSet.getLabels());
       validLosses.add(validLoss);
 
-      log.info("Epoch {}: Train Loss = {}, Valid Loss = {}",
-          epoch + 1, trainLoss, validLoss);
+      log.info("Epoch {}: Train Loss = {}, Valid Loss = {}", epoch + 1, trainLoss, validLoss);
 
       // Early stopping check
       if (validLoss < bestValidLoss) {
@@ -199,7 +199,7 @@ public class GEXModelTrainer {
     log.info("Test set evaluation:\n{}", testEval.stats());
 
     return TrainingResult.builder()
-        .model(model)
+        //.model(model)
         .bestEpoch(bestEpoch)
         .bestValidationLoss(bestValidLoss)
         .trainLosses(trainLosses)
@@ -223,7 +223,7 @@ public class GEXModelTrainer {
   public HyperparameterResult tuneHyperparameters(
       List<TotalGEX> snapshots,
       List<GEXFeatures> features,
-      Map<String, List<Object>> hyperparamGrid) throws IOException {
+      Map<String, List<Object>> hyperparamGrid) {
 
     log.info("Starting hyperparameter tuning");
 
@@ -268,7 +268,7 @@ public class GEXModelTrainer {
       List<TotalGEX> snapshots,
       List<GEXFeatures> features,
       int numFolds,
-      TrainingConfig baseConfig) throws IOException {
+      TrainingConfig baseConfig) {
 
     log.info("Starting {}-fold cross-validation", numFolds);
 
@@ -359,18 +359,7 @@ public class GEXModelTrainer {
 
   private GEXFeatures extractFeatures(TotalGEX snapshot) {
     // Delegate to feature extractor
-    return new GEXFeatureExtractor().extractFeatures(
-        snapshot,
-        Collections.emptyList()
-    );
+    return new GEXFeatureExtractor().extractFeatures(snapshot, List.of());
   }
 
-  /**
-   * Save trained model to disk
-   */
-  public void saveModel(MultiLayerNetwork model, String path) throws IOException {
-    File modelFile = new File(path);
-    ModelSerializer.writeModel(model, modelFile, true);
-    log.info("Model saved to {}", path);
-  }
 }

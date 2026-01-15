@@ -1,12 +1,12 @@
-## Train
+### Train
 POST http://localhost:7301/api/v1/ai/train
 Content-Type: application/json
-Accept: applicadtion/json
+Accept: application/json
 
 {
   "symbol": "$SPX",
   "startDate": "2026-01-02T08:30:00.000000",
-  "endDate": "2026-01-09T15:00:00.000000",
+  "endDate": "2026-01-14T15:00:00.000000",
   "predictionHorizon": 60,
   "modelType": "lstm",
   "numEpochs": 50,
@@ -22,3 +22,21 @@ Accept: applicadtion/json
   "sequenceLength": 15,
   "numSamples": 2340
 }
+
+
+### Predict
+GET http://localhost:7301/api/v1/ai/predict/$SPX?minutesAhead=60
+Content-Type: application/json
+Accept: application/json
+
+
+### Predict Multi-Horizon
+GET http://localhost:7301/api/v1/ai/predict/multi-horizon/$SPX
+Content-Type: application/json
+Accept: application/json
+
+
+### Feature Importance
+GET http://localhost:7301/api/v1/ai/feature-importance/$SPX
+Content-Type: application/json
+Accept: application/json

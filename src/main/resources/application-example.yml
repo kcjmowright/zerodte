@@ -1,6 +1,13 @@
-#server:
-#  servlet:
-#    context-path: '/api'
+logging:
+  level:
+    # Spring Web logging
+    org.jackson
+    org.springframework.web: DEBUG
+    org.springframework.http.converter: DEBUG
+    org.springframework.web.reactive.function.client: TRACE
+    org.springframework.web.reactive.function.client.ExchangeFunctions: TRACE
+    # Reactor Netty (if using default WebClient)
+    reactor.netty.http.client: DEBUG
 
 spring:
   application:
@@ -13,6 +20,10 @@ spring:
     driver-class-name: org.postgresql.Driver
     url: jdbc:postgresql://localhost:5432/zerodte
     username: postgres
+  web:
+    error:
+      include-stacktrace: always
+      include-message: always
 
 schwab-api:
   oauth2:
@@ -22,7 +33,7 @@ schwab-api:
 
 zerodte:
   model:
-    path: '/path/to/model.bin'
+    basePath: '/path/to/'
   agent:
     accountNumber: 'EXAMPLE_ACCOUNT_NUMBER'
     call:
