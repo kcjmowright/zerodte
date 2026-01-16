@@ -68,7 +68,6 @@ function Account() {
                                 </dl>
 
                                 <h2 className="text-2xl font-bold tracking-tight text-gray-900 mb-4">Positions</h2>
-
                                 <table
                                     className="w-full border-collapse border border-gray-400 bg-white text-sm dark:border-gray-500 dark:bg-gray-800">
                                     <thead className="bg-gray-50 dark:bg-gray-700">

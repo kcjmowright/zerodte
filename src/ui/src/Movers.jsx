@@ -89,6 +89,7 @@ function Movers() {
                                 return <Alert message={error.message} />;
                             }
                             const headers = [
+                                "Symbol",
                                 "Last Price",
                                 "Net Change",
                                 "Net % Change",
@@ -98,24 +99,16 @@ function Movers() {
                                 "Trades"
                             ];
                             const rows = movers.sort((a, b) => b.netChange - a.netChange).map(row => [
-                                row.lastPrice,
-                                row.netChange,
-                                row.netPercentChange / 100.0,
-                                row.totalVolume,
-                                row.volume,
+                                row.symbol,
+                                formatters.currency.format(row.lastPrice),
+                                formatters.currency.format(row.netChange),
+                                formatters.percentage.format(row.netPercentChange / 100.0),
+                                formatters.number.format(row.totalVolume),
+                                formatters.number.format(row.volume),
                                 row.marketShare,
                                 row.trades
                             ]);
-                            const cellFormatters = [
-                                (cell) => formatters.currency.format(cell),
-                                (cell) => formatters.currency.format(cell),
-                                (cell) => formatters.percentage.format(cell),
-                                (cell) => formatters.number.format(cell),
-                                (cell) => formatters.number.format(cell),
-                                (cell) => cell,
-                                (cell) => cell,
-                            ];
-                            return <CustomTable headers={headers} rowData={rows} cellFormatters={cellFormatters} />;
+                            return <CustomTable headers={headers} rowData={rows} />;
                         })()
                     }
                 </div>

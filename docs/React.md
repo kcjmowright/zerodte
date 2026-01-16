@@ -341,6 +341,126 @@ export default function Page() {
 }
 ```
 
+---
+
+## Injecting Components into Components
+
+In React, injecting or nesting components is a fundamental pattern used to build complex UIs from simple building blocks. 
+There are three primary ways to achieve this depending on your specific needs.
+
+### 1. Direct Nesting
+
+The most common method is to import a child component and place it directly within the JSX of a parent component. This creates a permanent, static relationship between the two.
+
+```javascript
+function Child() {
+  return <p>I am the child component!</p>;
+}
+
+function Parent() {
+  return (
+    <div>
+      <h1>Parent Container</h1>
+      <Child /> 
+    </div>
+  );
+}
+
+```
+
+### 2. Using the `children` Prop
+
+If you want to create a "wrapper" or "layout" component that can hold any content passed to it, use the [special children prop](https://www.google.com/search?q=https://react.dev/learn/passing-props-to-a-component%23passing-jsx-as-children). This is highly effective for sidebars, modals, or cards.
+
+* **Flexible:** The parent doesn't need to know what's inside it ahead of time.
+* **Syntax:** Content placed between the opening and closing tags of a component is automatically passed as `children`.
+
+```javascript
+function Card({ children }) {
+  return <div className="card-style">{children}</div>;
+}
+
+function App() {
+  return (
+    <Card>
+      <p>This text is "injected" into the Card via the children prop.</p>
+    </Card>
+  );
+}
+
+```
+
+### 3. Component Injection via Props
+
+You can pass a component (or a reference to one) as a standard prop. This is useful when a component needs to render something in a specific slot, like a "Header" or "Footer" area.
+
+* **Slot Pattern:** Define specific locations where external components should appear.
+* **Logic:** You can pass either a rendered element or a function that returns an element.
+
+```javascript
+function Layout({ header, content }) {
+  return (
+    <main>
+      <header>{header}</header>
+      <section>{content}</section>
+    </main>
+  );
+}
+
+// Usage
+<Layout 
+  header={<Navbar />} 
+  content={<Dashboard />} 
+/>
+
+```
+
+---
+
+## Optional Attributes in Markup
+
+In JSX, defining an optional HTML attribute is typically handled using **JavaScript logical operators** 
+or **ternary expressions** directly within the curly braces of an attribute.
+
+Here are the most common ways to achieve this:
+
+### 1. Using the Logical AND (`&&`) Operator
+
+This is the cleanest method when you want an attribute to appear only if a condition is true. If the condition is false, React will omit the attribute entirely.
+
+```jsx
+<button disabled={isPending && true}>
+  Submit
+</button>
+
+```
+
+### 2. Passing `undefined` or `null`
+
+React is designed to automatically omit any attribute whose value is `null` or `undefined`. This is very useful for optional props.
+
+```jsx
+<div id={userId || undefined}>
+  User Profile
+</div>
+
+```
+
+### 3. Conditional Object Spreading
+
+If you have multiple optional attributes, you can spread an object. This keeps your JSX tag from becoming cluttered with multiple ternary operators.
+
+```jsx
+const optionalAttributes = isPremium ? { 'data-status': 'gold', title: 'VIP User' } : {};
+
+<div {...optionalAttributes}>
+  Welcome back!
+</div>
+
+```
+
+---
+
 ## Next.js
 
 Is a React framework

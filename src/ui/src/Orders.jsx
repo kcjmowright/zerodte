@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Loading from "./Loading.jsx";
 import Alert from "./Alert.jsx";
+import CustomTable from "./CustomTable.jsx";
 
 function Orders() {
     const [orders, setOrders] = useState(null);
@@ -48,22 +49,31 @@ function Orders() {
                             if (!orders || !orders.length) {
                                 return <div>No orders at this time.</div>;
                             }
-                            return <pre>{JSON.stringify(orders, null , 2)}</pre>
-                            // return <table
-                            //     className="w-full border-collapse border border-gray-400 bg-white text-sm dark:border-gray-500 dark:bg-gray-800">
-                            //     <thead className="bg-gray-50 dark:bg-gray-700">
-                            //         <tr>
-                            //             <th className="w-1/2 border border-gray-300 p-4 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-200">Last
-                            //                 Price
-                            //             </th>
-                            //         </tr>
-                            //     </thead>
-                            //     <tbody>
-                            //         <tr>
-                            //             <td></td>
-                            //         </tr>
-                            //     </tbody>
-                            // </table>
+                            const headers = [
+                                "Order ID",
+                                "Type",
+                                "Entered",
+                                "Closed",
+                                "Status"
+                            ];
+                            const rowData = orders.map(order => {
+                                const orderLegs = order.orderLegCollection.map(orderLeg => [
+                                    `${orderLeg.instruction} ${orderLeg.quantity} ${orderLeg.instrument.description} ( ${orderLeg.instrument.symbol} )`
+                                ]);
+                                return [
+                                    [
+                                        order.orderId,
+                                        order.complexOrderStrategyType,
+                                        order.enteredTime,
+                                        order.closeTime,
+                                        `${order.status} ${order.statusDescription ? order.statusDescription : ''}`
+                                    ],
+                                    ...orderLegs
+                                ]
+                            }).flat(1);
+                            const cols = 5;
+                            return <CustomTable headers={headers} rowData={rowData} cols={cols} />;
+                            // return <pre>{JSON.stringify(orders, null , 2)}</pre>
                         })()
                     }
                 </div>
@@ -228,6 +238,79 @@ export default Orders;
         ]
       }
     ]
+  }
+]
+
+[
+  {
+    "accountNumber": 56622352,
+    "cancelable": false,
+    "closeTime": "2026-01-14T15:02:00Z",
+    "complexOrderStrategyType": "VERTICAL",
+    "destinationLinkName": "AutoRoute",
+    "duration": "DAY",
+    "editable": false,
+    "enteredTime": "2026-01-14T15:02:00Z",
+    "filledQuantity": 0,
+    "orderId": 1005131565219,
+    "orderLegCollection": [
+      {
+        "instruction": "SELL_TO_OPEN",
+        "instrument": {
+          "assetType": "OPTION",
+          "cusip": "0XSP..ME60690000",
+          "description": "MINI-SPX 500 PM-SET 01/14/2026 $690 Put",
+          "instrumentId": 243964684,
+          "optionDeliverables": [
+            {
+              "deliverableUnits": 100,
+              "symbol": "$XSP"
+            }
+          ],
+          "putCall": "PUT",
+          "symbol": "XSP   260114P00690000",
+          "type": "VANILLA",
+          "underlyingSymbol": "XSP"
+        },
+        "legId": 1,
+        "orderLegType": "OPTION",
+        "positionEffect": "OPENING",
+        "quantity": 1
+      },
+      {
+        "instruction": "BUY_TO_OPEN",
+        "instrument": {
+          "assetType": "OPTION",
+          "cusip": "0XSP..ME60680000",
+          "description": "MINI-SPX 500 PM-SET 01/14/2026 $680 Put",
+          "instrumentId": 243935628,
+          "optionDeliverables": [
+            {
+              "deliverableUnits": 100,
+              "symbol": "$XSP"
+            }
+          ],
+          "putCall": "PUT",
+          "symbol": "XSP   260114P00680000",
+          "type": "VANILLA",
+          "underlyingSymbol": "XSP"
+        },
+        "legId": 2,
+        "orderLegType": "OPTION",
+        "positionEffect": "OPENING",
+        "quantity": 1
+      }
+    ],
+    "orderStrategyType": "SINGLE",
+    "orderType": "NET_CREDIT",
+    "price": 1.59,
+    "quantity": 1,
+    "remainingQuantity": 0,
+    "requestedDestination": "AUTO",
+    "session": "NORMAL",
+    "status": "REJECTED",
+    "statusDescription": "You do not have enough available cash/buying power for this order due to recently deposited funds still on hold.",
+    "tag": "API_TOS:TRADE_ALL"
   }
 ]
  */
