@@ -1,14 +1,79 @@
-# React Essentials
+# React Basics
 
-## References
+[React](https://react.dev) is an open-source JavaScript library for creating user interfaces, particularly suited for single-page applications. 
+Created and maintained by Meta, it stands as one of the leading tools in frontend web development. React's fundamental 
+approach centers on decomposing intricate user interfaces into smaller, self-contained building blocks known as components.
 
-* [Developer Website - react.dev](react.dev)
-* [React Playground](playground.react.dev)
-* [Using the Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch)
+## Core Concepts
 
-## Initialize React Project with Vite
+### Component-Based Architecture
 
-[Vite](https://vitejs.dev)
+Instead of writing one massive file for a webpage, you build individual components that are reusable 
+and can be nested within each other.
+
+### Declarative UI
+
+You describe what you want the UI to look like for a given state and [React](https://react.dev) handles updating the browser when data changes.
+
+### Virtual DOM
+
+React keeps a lightweight copy of the webpage in memory (the Virtual DOM). 
+When data changes, it compares the virtual copy to the real one and updates only the specific parts that changed, 
+making it much faster than traditional methods.
+
+### JSX (JavaScript XML)
+
+React uses a syntax extension called JSX that looks like HTML but lives inside your JavaScript. 
+It makes writing component structures more intuitive.
+
+---
+
+## Generating a New React Project
+
+The recommended way to generate a [React](https://react.dev) project depends on whether you are building 
+simple client-side app or a full-stack production application.
+
+### Production & Full-Stack Apps
+
+Frameworks are now the "default" recommendation because they handle routing, data fetching, and performance optimizations 
+(like [Server Components](https://builder.aws.com/content/35mjuFWn4hSGCK6JjaZHFIGrzPG/reactjs-best-practices-in-2026)) 
+out of the box.
+
+#### [Next.js](https://www.google.com/search?q=https://react.dev/learn/creating-a-react-app%23nextjs-app-router)
+
+The most popular choice for SEO-friendly, high-performance applications is Next.js. 
+It uses the App Router to leverage the full power of React's latest architecture.
+
+To create a [React](https://react.dev) project with Next.js, type:
+
+`npx create-next-app@latest`
+
+#### [React Router](https://www.google.com/search?q=https://react.dev/learn/creating-a-react-app%23react-router-v7)
+
+React Router is a powerful full-stack framework emphasizing standard Web APIs. 
+
+To create a new [React](https://react.dev) project using **[React Router](https://reactrouter.com/home)**, type:
+
+`npx create-react-router@latest my-react-router-app`
+
+where `my-react-router-app` is the name and folder where the [React](https://react.dev) router app archetype will be created.
+
+
+#### [Expo](https://www.google.com/search?q=https://react.dev/learn/creating-a-react-app%23expo-for-native-apps)
+
+Expo is for building universal apps that run on Android, iOS, and the web simultaneously.
+
+To create a [React](https://react.dev) project with **[Expo](https://www.google.com/search?q=https://react.dev/learn/creating-a-react-app%23expo-for-native-apps)**, type:
+
+`npx create-expo-app@latest`
+
+
+### Generating Simple React Apps
+
+If you don't need a full-stack framework and want a fast, lightweight setup, 
+**[Vite](https://learningdaily.dev/create-react-app-cra-deprecated-whats-next-d0c3532958e8)** is the industry standard. 
+It is highly recommended for internal tools, dashboards, or learning the basics of React.
+**[Vite](https://learningdaily.dev/create-react-app-cra-deprecated-whats-next-d0c3532958e8)** provides near-instant Hot Module Replacement (HMR) and much faster build times than Webpack.
 
 To create a react project, type:
 
@@ -24,26 +89,32 @@ Examine the packages.json and remove the react project dependencies, then:
 
 This ensures the latest version of react is installed.
 
-## Initialize a React Project with React Router
+---
 
-[React Router](https://reactrouter.com/home)
-
-To create a new React project, type:
-
-`npx create-react-router@latest my-react-router-app`
-
-where `my-react-router-app` is the name and folder where the React router app archetype will be created.
-
-## Basics
-
+## React Basics
 
 ### Variables and Properties
 
-Note: `cmd ctrl space` opens the emoji keyboard
+#### Javascript Variables
+
+In JavaScript, variables are declared in various scopes using the following keywords.
+
+- `var` - Is the old school way of declaring variables.  Variables declared using `var` are scoped to the surrounding function.
+- `let` - Is the new way of declaring variables.  Variables declared using `let` are scoped to the surrounding brackets, `{}`, or module if no surrounding brackets exist.
+- `const` - Short for constant, this is also the new way of declaring variables.  The difference between `let` and `const` is that `const` doesn't allow variable reassignment.
+- Variables declared without a keyword are in the global scope which is contrary to best practices.
+
+#### Component properties in React/JSX
+
+Variables can be used inside the markup using brackets `{}`.
+Components must have 1 wrapper tag.  
+Components can have properties via the `props` object.  
+Use destructuring to use only what you want from the `props` object.
 
 ```jsx
 import './Dashboard.css'
 
+// Note: `cmd ctrl space` opens the emoji keyboard on a Mac.
 let bee = "📟";
 
 function Header({name, year}) {
@@ -66,12 +137,12 @@ function Dashboard() {
 export default Dashboard
 ```
 
-Variables can be used inside the markup using brackets `{}`.
-
-Components must have 1 wrapper tag.  
-Components can have properties via the `props` object.  Use destructuring to use only what you want from the `props` object.
-
 ### Lists
+
+Use the the `Array#map` function to iterate through elements.
+React requires each item in the list to have a unique `key` property.  Its best to use an object with a unique id as shown above.
+
+Double bracket `{{}}` to pass an object to a element property.
 
 ```jsx
 const items = [
@@ -103,13 +174,7 @@ function Main({dishes}) {
 
 ```
 
-Use the the `Array#map` function to iterate through elements.
-React requires each item in the list to have a unique `key` property.  Its best to use an object with a unique id as shown above.
-
-Double bracket `{{}}` to pass an object to a element property.
-
 ### Images
-
 
 ```jsx
 import chef from "./images/chef.jpg";
@@ -121,7 +186,8 @@ import chef from "./images/chef.jpg";
 
 ### JSX Fragment
 
-All components must be wrapped in a top level element.  `<React.Fragment>` is an alternative to cluttering the DOM with `div`s.  Short-hand `<></>` removes the need to import `React`.
+All components must be wrapped in a top level element.  `<React.Fragment>` is an alternative to cluttering the DOM with `div`s.  
+Short-hand `<></>` removes the need to import `React`.
 
 ```jsx
 import React from "docs/React";
@@ -130,7 +196,6 @@ import React from "docs/React";
     ...
 </React.Fragment>
 ```
-
 
 ```jsx
 <>
@@ -169,7 +234,7 @@ function Dashboard() {
 
 ### State Management with `useReducer`
 
-Allows the passage of a function reference.  Logic is contained within the `reducer`.
+The `useReducer` function allows the passage of a function reference.  Logic is contained within the `reducer`.
 
 ```jsx
 import {useReducer} from "docs/React";
@@ -226,7 +291,8 @@ function Dashboard() {
 
 ```
 
-By default, the `useEffect` hook is called everytime the value changes.  Passing in an empty array, restricts the call to when its initialized.
+By default, the `useEffect` hook is called everytime the value changes.  
+Passing in an empty array, restricts the call to when its initialized.
 
 
 ```jsx
@@ -255,6 +321,8 @@ function Dashboard() {
 
 ```
 
+---
+
 ## Fetching Data in a React Application
 
 ```jsx
@@ -273,9 +341,11 @@ export default async function Page() {
 }
 ```
 
+---
+
 ## Forms
 
-Use [FormData](https://developer.mozilla.org/en-US/docs/Web/API/FormData).
+Use the JavaScript standard, [FormData](https://developer.mozilla.org/en-US/docs/Web/API/FormData).
 
 Form action references an async function that maps the `FormData` to an object.
 
@@ -348,7 +418,7 @@ export default function Page() {
 In React, injecting or nesting components is a fundamental pattern used to build complex UIs from simple building blocks. 
 There are three primary ways to achieve this depending on your specific needs.
 
-### 1. Direct Nesting
+### Direct Nesting
 
 The most common method is to import a child component and place it directly within the JSX of a parent component. This creates a permanent, static relationship between the two.
 
@@ -368,7 +438,7 @@ function Parent() {
 
 ```
 
-### 2. Using the `children` Prop
+### Using the `children` Prop
 
 If you want to create a "wrapper" or "layout" component that can hold any content passed to it, use the [special children prop](https://www.google.com/search?q=https://react.dev/learn/passing-props-to-a-component%23passing-jsx-as-children). This is highly effective for sidebars, modals, or cards.
 
@@ -390,7 +460,7 @@ function App() {
 
 ```
 
-### 3. Component Injection via Props
+### Component Injection Using Props
 
 You can pass a component (or a reference to one) as a standard prop. This is useful when a component needs to render something in a specific slot, like a "Header" or "Footer" area.
 
@@ -407,7 +477,6 @@ function Layout({ header, content }) {
   );
 }
 
-// Usage
 <Layout 
   header={<Navbar />} 
   content={<Dashboard />} 
@@ -417,25 +486,25 @@ function Layout({ header, content }) {
 
 ---
 
-## Optional Attributes in Markup
+## Optional Attributes in JSX Markup
 
 In JSX, defining an optional HTML attribute is typically handled using **JavaScript logical operators** 
 or **ternary expressions** directly within the curly braces of an attribute.
 
 Here are the most common ways to achieve this:
 
-### 1. Using the Logical AND (`&&`) Operator
+### Using the Logical AND (`&&`) Operator
 
-This is the cleanest method when you want an attribute to appear only if a condition is true. If the condition is false, React will omit the attribute entirely.
+This is the cleanest method when you want an attribute to appear only if a condition is true. If the condition is false, [React](https://react.dev) will omit the attribute entirely.
 
 ```jsx
-<button disabled={isPending && true}>
+<button disabled={isDisabled && true}>
   Submit
 </button>
 
 ```
 
-### 2. Passing `undefined` or `null`
+### Passing `undefined` or `null`
 
 React is designed to automatically omit any attribute whose value is `null` or `undefined`. This is very useful for optional props.
 
@@ -446,7 +515,7 @@ React is designed to automatically omit any attribute whose value is `null` or `
 
 ```
 
-### 3. Conditional Object Spreading
+### Conditional Object Spreading
 
 If you have multiple optional attributes, you can spread an object. This keeps your JSX tag from becoming cluttered with multiple ternary operators.
 
@@ -461,22 +530,16 @@ const optionalAttributes = isPremium ? { 'data-status': 'gold', title: 'VIP User
 
 ---
 
-## Next.js
+## Adding CSS Using Tailwind CSS
 
-Is a React framework
 
-```sh
-npx create-next-app@latest
-```
-
-## React Router
-
-[Router](https://reactrouter.com/home)
-
-`npm i react-router`
-
-## Tailwind CSS
-
-[Tailwind](https://tailwindcss.com/)
+[Tailwind](https://tailwindcss.com/) is a CSS framework that compliments React.
 
 `npm install tailwindcss @tailwindcss/vite`
+
+## References
+
+* [React Developer Website](https://react.dev)
+* [Official React Documentation](https://react.dev/learn/creating-a-react-app)
+* [React Playground](https://playground.react.dev)
+* [Using the Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch)
