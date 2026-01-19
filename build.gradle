@@ -38,6 +38,7 @@ dependencies {
 
 	implementation 'ch.obermuhlner:big-math:2.3.2'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-websocket'
     implementation 'com.pangility:schwab-api-client:0.1.6'
     implementation("org.deeplearning4j:deeplearning4j-core:$dl4jVersion")
     implementation("org.nd4j:nd4j-api:$dl4jVersion")

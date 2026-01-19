@@ -29,8 +29,7 @@ public class GEXDeepLearning {
   private final GEXDataPreprocessor preprocessor;
   private final TotalGEXRepository totalGEXRepository;
 
-  //@Override
-  public void run(String... args) throws Exception {
+  public void run(String... args) {
     log.info("Starting GEX Deep Learning Example");
     String symbol = args[0];
     LocalDateTime startTime = LocalDateTime.parse(args[1]);
@@ -54,7 +53,7 @@ public class GEXDeepLearning {
   /**
    * Example 1: Train a basic model
    */
-  public void basicTrainingExample(String symbol, LocalDateTime start, LocalDateTime end) throws Exception {
+  public void basicTrainingExample(String symbol, LocalDateTime start, LocalDateTime end) {
     log.info("=== Example 1: Basic Model Training ===");
 
     // 1. Configure training
@@ -109,7 +108,7 @@ public class GEXDeepLearning {
   /**
    * Example 2: Hyperparameter tuning
    */
-  public void hyperparameterTuningExample(String symbol, LocalDateTime start, LocalDateTime end) throws Exception {
+  public void hyperparameterTuningExample(String symbol, LocalDateTime start, LocalDateTime end) {
     log.info("=== Example 2: Hyperparameter Tuning ===");
 
     // Define hyperparameter search space
@@ -149,7 +148,7 @@ public class GEXDeepLearning {
   /**
    * Example 3: Cross-validation
    */
-  public void crossValidationExample(String symbol, LocalDateTime start, LocalDateTime end) throws Exception {
+  public void crossValidationExample(String symbol, LocalDateTime start, LocalDateTime end) {
     log.info("=== Example 3: Cross-Validation ===");
     List<TotalGEX> snapshots = totalGEXRepository.getTotalGEXBySymbolBetween(symbol, start, end);
     List<GEXFeatures> features = extractAllFeatures(snapshots);
@@ -221,7 +220,7 @@ public class GEXDeepLearning {
   /**
    * Example 5: Model comparison
    */
-  public void modelComparisonExample(String symbol, LocalDateTime start, LocalDateTime end) throws Exception {
+  public void modelComparisonExample(String symbol, LocalDateTime start, LocalDateTime end) {
     log.info("=== Example 5: Model Comparison ===");
 
     String[] modelTypes = {"feedforward", "lstm", "deep", "attention"};

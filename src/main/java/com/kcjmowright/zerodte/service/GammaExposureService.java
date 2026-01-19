@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
@@ -33,6 +34,14 @@ import java.util.stream.Stream;
 public class GammaExposureService {
   private final SchwabMarketDataApiClient marketDataClient;
   private final TotalGEXRepository totalGEXRepository;
+
+  /**
+   * Workaround for schwab inability to serve certain expiration dates.
+   */
+  private Map<String, String> expirationDatesSymbolMapping = Map.of(
+    "$SPX", "SPY",
+    "$XSP", "SPY"
+  );
 
   public Mono<TotalGEX> computeGammaExposure(String symbol, List<LocalDate> expirationDates, boolean suppressDetails) {
     LocalDate from;
@@ -70,8 +79,10 @@ public class GammaExposureService {
   }
 
   public Flux<LocalDate> fetchExpirationDates(String symbol) {
-    return marketDataClient.fetchExpirationChainToMono(symbol).flatMapMany(res ->
-        Flux.fromStream(res.getExpirationList().stream().map(Expiration::getExpirationDate)));
+    return marketDataClient
+        .fetchExpirationChainToMono(expirationDatesSymbolMapping.getOrDefault(symbol, symbol))
+        .flatMapMany(res ->
+            Flux.fromStream(res.getExpirationList().stream().map(Expiration::getExpirationDate)));
   }
 
   @Scheduled(cron = "0 */1 8-15 * * MON-FRI")

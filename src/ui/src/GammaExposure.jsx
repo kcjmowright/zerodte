@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Alert from "./Alert.jsx";
 import Loading from "./Loading.jsx";
 import GEXChart from "./GEXChart.jsx";
@@ -6,6 +6,7 @@ import CandleStickChart from "./CandleStickChart.jsx";
 import SmallCheckboxButton from "./SmallCheckboxButton.jsx";
 import formatters from "./utils/formatters.js";
 import Slider from "./Slider.jsx";
+import {useStockWebSocket} from "./hooks/useStockWebSocket.js";
 
 function GammaExposure() {
     const NOW = "Now";
@@ -29,7 +30,7 @@ function GammaExposure() {
     const [gexHistoryDateTimes, setGexHistoryDateTimes] = useState([]);
     const [gexHistoryDateTimeInput, setGexHistoryDateTimeInput] = useState(null);
     const [gexHistoryDateTime, setGexHistoryDateTime] = useState(null);
-
+    const { stockData, isConnected} = useStockWebSocket(selectedSymbol);
     /**
      * Find initial date range for stock chart.
      * @returns {*[]}
@@ -339,14 +340,12 @@ function GammaExposure() {
                             if (!quote) {
                                 return <div></div>;
                             }
-                            const quoteTime = new Date();
-                            quoteTime.setTime(quote.quote.quoteTime);
                             return <>
                                 <div>
                                     <h2 className="text-2xl font-bold tracking-tight text-gray-900 mb-4">{quote.reference.description} ({quote.symbol})</h2>
                                     <dl className="flex gap-4 items-center">
-                                        <dt className="font-semibold">Last {!quoteTime.getTime() ? "" : `(as of ${quoteTime.toLocaleString()})`}:</dt>
-                                        <dd>{formatters.currency.format(quote.quote.lastPrice)}</dd>
+                                        <dt className="font-semibold">Last as of ( {stockData && stockData.timestamp ? new Date(stockData.timestamp).toLocaleString() : quote.quote.quoteTime ? new Date(quote.quote.quoteTime).toLocaleString() : "N/A"} ):</dt>
+                                        <dd>{stockData && stockData.currentPrice ? formatters.currency.format(stockData.currentPrice) : formatters.currency.format(quote.quote.lastPrice)}</dd>
                                         <dt className="font-semibold">Close:</dt>
                                         <dd>{formatters.currency.format(quote.quote.closePrice)}</dd>
                                         <dt className="font-semibold">Net Change:</dt>
@@ -356,92 +355,107 @@ function GammaExposure() {
                                         <dt className="font-semibold">Volume:</dt>
                                         <dd>{formatters.number.format(quote.quote.totalVolume)}</dd>
                                     </dl>
-                                    <div className="flex gap-4">
-                                        <label className="font-semibold">Expiration Dates:</label>
-                                        <select
-                                            disabled={!!gexHistoryDateTimeInput && gexHistoryDateTimeInput.value !== NOW}
-                                            id="expirationDates"
-                                            name="expirationDates"
-                                            value={selectedExpDates}
-                                            onChange={handleExpirationDates}
-                                            multiple
-                                            size="1"
-                                            className="
-                                                h-6
-                                                border
-                                                rounded
-                                                px-2
-                                                overflow-auto
-                                                disabled:opacity-60
-                                                disabled:bg-gray-100
-                                                disabled:border-gray-300
-                                                disabled:cursor-not-allowed">
-                                            { expirationDates.map((expirationDate) => (
-                                                <option key={expirationDate} value={expirationDate}>
-                                                    {expirationDate}
-                                                </option>
-                                              ))
-                                            }
-                                        </select>
-                                        <SmallCheckboxButton
-                                            id="showCallGEX"
-                                            checked={showCallGEX}
-                                            label={showCallGEX ? "Hide Call GEX" : "Show Call GEX"}
-                                            onChange={(e) => setShowCallGEX(e.target.checked)} />
-                                        <SmallCheckboxButton
-                                            id="showPutGEX"
-                                            checked={showPutGEX}
-                                            label={showPutGEX ? "Hide Put GEX" : "Show Put GEX"}
-                                            onChange={(e) => setShowPutGEX(e.target.checked)} />
-                                        <SmallCheckboxButton
-                                            id="showAbsoluteGEX"
-                                            checked={showAbsoluteGEX}
-                                            label={showAbsoluteGEX ? "Hide Absolute GEX" : "Show Absolute GEX"}
-                                            onChange={(e) => setShowAbsoluteGEX(e.target.checked)} />
-                                        <SmallCheckboxButton
-                                            id="showOpenInterest"
-                                            checked={showOpenInterest}
-                                            label={showOpenInterest ? "Hide Open Interest" : "Show Open Interest"}
-                                            onChange={(e) => setShowOpenInterest(e.target.checked)} />
-                                        <SmallCheckboxButton
-                                            id="showCallVolume"
-                                            checked={showCallVolume}
-                                            label={showCallVolume ? "Hide Call Volume" : "Show Call Volume"}
-                                            onChange={(e) => setShowCallVolume(e.target.checked)} />
-                                        <SmallCheckboxButton
-                                            id="showPutVolume"
-                                            checked={showPutVolume}
-                                            label={showPutVolume ? "Hide Put Volume" : "Show Put Volume"}
-                                            onChange={(e) => setShowPutVolume(e.target.checked)} />
-                                    </div>
-                                    {
-                                        (() => {
-                                            if (!gex && loading > 0) {
-                                                return <Loading/>;
-                                            }
-                                            if (!gex) {
-                                                return <></>;
-                                            }
-                                            return <>
-                                                <dl className="flex gap-4 items-center">
-                                                    <dt className="font-semibold">Total Call GEX:</dt>
-                                                    <dd>{formatters.number.format(gex.totalCallGEX)}</dd>
-                                                    <dt className="font-semibold">Total Put GEX:</dt>
-                                                    <dd>{formatters.number.format(gex.totalPutGEX)}</dd>
-                                                    <dt className="font-semibold">Total GEX:</dt>
-                                                    <dd>{formatters.number.format(gex.totalGEX)}</dd>
-                                                    <dt className="font-semibold">Call Wall</dt>
-                                                    <dd>{formatters.number.format(gex.callWall)}</dd>
-                                                    <dt className="font-semibold">Put Wall</dt>
-                                                    <dd>{formatters.number.format(gex.putWall)}</dd>
-                                                    <dt className="font-semibold">Flip Point</dt>
-                                                    <dd>{formatters.number.format(gex.flipPoint)}</dd>
-                                                </dl>
-                                                <Slider data={gexHistoryDateTimes} onValueChange={onGEXHistoryDateTimesSliderChange} />
-                                            </>
-                                        })()
-                                    }
                                 </div>
+                                {
+                                    stockData && stockData.predictions && stockData.predictions["15"] &&
+                                    <div>
+                                        <dl className="flex gap-4 items-center">
+                                            <dt className="font-semibold">15 minute:</dt>
+                                            <dd>{formatters.currency.format(stockData.predictions["15"].predictedPrice)}</dd>
+                                            <dt className="font-semibold">Confidence:</dt>
+                                            <dd></dd>
+                                            <dt className="font-semibold">30 minute:</dt>
+                                            <dd>{formatters.currency.format(stockData.predictions["30"].predictedPrice)}</dd>
+                                            <dt className="font-semibold">60 minute:</dt>
+                                            <dd>{formatters.currency.format(stockData.predictions["60"].predictedPrice)}</dd>
+                                        </dl>
+                                    </div>
+                                }
+                                <div className="flex gap-4">
+                                    <label className="font-semibold">Expiration Dates:</label>
+                                    <select
+                                        disabled={!!gexHistoryDateTimeInput && gexHistoryDateTimeInput.value !== NOW}
+                                        id="expirationDates"
+                                        name="expirationDates"
+                                        value={selectedExpDates}
+                                        onChange={handleExpirationDates}
+                                        multiple
+                                        size="1"
+                                        className="
+                                            h-6
+                                            border
+                                            rounded
+                                            px-2
+                                            overflow-auto
+                                            disabled:opacity-60
+                                            disabled:bg-gray-100
+                                            disabled:border-gray-300
+                                            disabled:cursor-not-allowed">
+                                        { expirationDates.map((expirationDate) => (
+                                            <option key={expirationDate} value={expirationDate}>
+                                                {expirationDate}
+                                            </option>
+                                          ))
+                                        }
+                                    </select>
+                                    <SmallCheckboxButton
+                                        id="showCallGEX"
+                                        checked={showCallGEX}
+                                        label={showCallGEX ? "Hide Call GEX" : "Show Call GEX"}
+                                        onChange={(e) => setShowCallGEX(e.target.checked)} />
+                                    <SmallCheckboxButton
+                                        id="showPutGEX"
+                                        checked={showPutGEX}
+                                        label={showPutGEX ? "Hide Put GEX" : "Show Put GEX"}
+                                        onChange={(e) => setShowPutGEX(e.target.checked)} />
+                                    <SmallCheckboxButton
+                                        id="showAbsoluteGEX"
+                                        checked={showAbsoluteGEX}
+                                        label={showAbsoluteGEX ? "Hide Absolute GEX" : "Show Absolute GEX"}
+                                        onChange={(e) => setShowAbsoluteGEX(e.target.checked)} />
+                                    <SmallCheckboxButton
+                                        id="showOpenInterest"
+                                        checked={showOpenInterest}
+                                        label={showOpenInterest ? "Hide Open Interest" : "Show Open Interest"}
+                                        onChange={(e) => setShowOpenInterest(e.target.checked)} />
+                                    <SmallCheckboxButton
+                                        id="showCallVolume"
+                                        checked={showCallVolume}
+                                        label={showCallVolume ? "Hide Call Volume" : "Show Call Volume"}
+                                        onChange={(e) => setShowCallVolume(e.target.checked)} />
+                                    <SmallCheckboxButton
+                                        id="showPutVolume"
+                                        checked={showPutVolume}
+                                        label={showPutVolume ? "Hide Put Volume" : "Show Put Volume"}
+                                        onChange={(e) => setShowPutVolume(e.target.checked)} />
+                                </div>
+                                {
+                                    (() => {
+                                        if (!gex && loading > 0) {
+                                            return <Loading/>;
+                                        }
+                                        if (!gex) {
+                                            return <></>;
+                                        }
+                                        return <div>
+                                            <dl className="flex gap-4 items-center">
+                                                <dt className="font-semibold">Total Call GEX:</dt>
+                                                <dd>{formatters.number.format(gex.totalCallGEX)}</dd>
+                                                <dt className="font-semibold">Total Put GEX:</dt>
+                                                <dd>{formatters.number.format(gex.totalPutGEX)}</dd>
+                                                <dt className="font-semibold">Total GEX:</dt>
+                                                <dd>{formatters.number.format(gex.totalGEX)}</dd>
+                                                <dt className="font-semibold">Call Wall</dt>
+                                                <dd>{formatters.number.format(gex.callWall)}</dd>
+                                                <dt className="font-semibold">Put Wall</dt>
+                                                <dd>{formatters.number.format(gex.putWall)}</dd>
+                                                <dt className="font-semibold">Flip Point</dt>
+                                                <dd>{formatters.number.format(gex.flipPoint)}</dd>
+                                            </dl>
+                                            <Slider data={gexHistoryDateTimes} onValueChange={onGEXHistoryDateTimesSliderChange} />
+                                        </div>
+                                    })()
+                                }
                                 { gex && <GEXChart
                                     callWall={gex.callWall}
                                     data={Object.values(gex.gexPerStrike)}

@@ -30,7 +30,7 @@ public class PriceController {
 
   @GetMapping("/price")
   public Mono<QuoteResponse> getPrice(@RequestParam String symbol) {
-    return priceService.getPrice(symbol);
+    return priceService.getQuoteResponse(symbol);
   }
 
   @GetMapping("/price-history/{symbol}")

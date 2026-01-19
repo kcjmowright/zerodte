@@ -24,7 +24,8 @@ public interface TotalGEXRepository extends JpaRepository<TotalGEXEntity, Long> 
   TotalGEXEntity getTopBySymbolOrderByCreatedDesc(String symbol);
 
   default TotalGEX getLatestBySymbol(String symbol) {
-    return getTopBySymbolOrderByCreatedDesc(symbol).getData();
+    TotalGEXEntity totalGEXEntity = getTopBySymbolOrderByCreatedDesc(symbol);
+    return totalGEXEntity == null ? null : totalGEXEntity.getData();
   }
 
   @Query("SELECT data FROM TotalGEXEntity WHERE symbol = :symbol ORDER BY created DESC LIMIT :limit")

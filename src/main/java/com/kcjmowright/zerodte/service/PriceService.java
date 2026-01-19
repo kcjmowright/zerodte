@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -29,9 +30,13 @@ public class PriceService {
   private final SchwabMarketDataApiClient marketDataClient;
   private final QuoteRepository quoteRepository;
 
-  public Mono<QuoteResponse> getPrice(String symbol) {
+  public Mono<QuoteResponse> getQuoteResponse(String symbol) {
     return marketDataClient.fetchQuoteToMono(symbol)
-        .retryWhen(Retry.backoff(3, java.time.Duration.ofSeconds(2)));
+        .retryWhen(Retry.backoff(3, Duration.ofSeconds(2)));
+  }
+
+  public Mono<QuoteEntity> getQuote(String symbol) {
+    return getQuoteResponse(symbol).map(this::getQuote);
   }
 
   public Mono<PriceHistoryStudyResponse> getPriceHistoryStudy(
