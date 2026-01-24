@@ -121,12 +121,28 @@ const prepareData = data => {
     });
 };
 
-function dateTimeFormatter(value) {
-    return value.split("T")[1];
+// function dateTimeFormatter(value) {
+//     return value.split("T")[1];
+// }
+
+function buildDateTimeFormatter(frequencyType) {
+    return (value) => {
+      switch (frequencyType) {
+          case "minute":
+              return value.split("T")[1];
+          case "monthly":
+              return Date.parse(value.split("T")[0]);
+          case "daily":
+          case "weekly":
+          default:
+              return value.split("T")[0];
+      }
+    };
 }
 
-const CandleStickChart = ({quoteStudies}) => {
+const CandleStickChart = ({quoteStudies, frequencyType}) => {
     const data = prepareData(quoteStudies);
+    const dateTimeFormatter = buildDateTimeFormatter(frequencyType);
     return (
         <BarChart
             style={{ width: "100%", maxHeight: "60vh", aspectRatio: 1 / 1.618 }}
@@ -152,10 +168,3 @@ const CandleStickChart = ({quoteStudies}) => {
 };
 
 export default CandleStickChart;
-
-/*
-            width={800}
-            height={600}
-            margin={{top: 20, right: 30, left: 20, bottom: 5}}
-            style={{ width: "100%", maxHeight: "60vh", aspectRatio: 1 / 1.618 }}
- */

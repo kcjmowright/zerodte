@@ -1,0 +1,2 @@
+GET https://127.0.0.1:8443/api/v1/gex/expirations/%24SPX
+Accept: */*

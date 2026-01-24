@@ -38,22 +38,9 @@ function GammaExposure() {
     function getChartDates() {
         const dates = [];
         const startDay = new Date();
+        startDay.setFullYear(startDay.getFullYear() - 1);
         const endDay = new Date();
-        switch (startDay.getDay()) {
-            case 0:
-                startDay.setDate(startDay.getDate() - 2);
-                endDay.setDate(startDay.getDate());
-                break;
-            case 1:
-                startDay.setDate(startDay.getDate() - 3);
-                break;
-            case 6:
-                startDay.setDate(startDay.getDate() - 1);
-                endDay.setDate(startDay.getDate());
-                break;
-            default:
-                startDay.setDate(startDay.getDate() - 1);
-        }
+        endDay.setDate(endDay.getDate() + 1);
         dates.push(startDay.toISOString().split('T')[0]);
         dates.push(endDay.toISOString().split('T')[0]);
         return dates;
@@ -180,7 +167,7 @@ function GammaExposure() {
         }
         try {
             setLoading(prev => prev + 1);
-            const url = `/api/v1/price-history/${symbol}?start=${start}&end=${end}`;
+            const url = `/api/v1/price-history/${symbol}?start=${start}&end=${end}&periodType=year&frequencyType=daily`;
             const response = await fetch(url);
             if (!response.ok) {
                 const e = await response.json();
@@ -469,7 +456,7 @@ function GammaExposure() {
                                     showPutVolume={showPutVolume}
                                     spotPrice={gex.spotPrice} />
                                 }
-                                { priceHistoryStudies && <CandleStickChart quoteStudies={priceHistoryStudies} /> }
+                                { priceHistoryStudies && <CandleStickChart quoteStudies={priceHistoryStudies} frequencyType="daily" /> }
                             </>;
                         })()
                     }
