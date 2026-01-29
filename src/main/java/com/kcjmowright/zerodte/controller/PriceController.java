@@ -3,8 +3,6 @@ package com.kcjmowright.zerodte.controller;
 import com.kcjmowright.zerodte.model.IronCondorContracts;
 import com.kcjmowright.zerodte.model.PriceHistoryStudyResponse;
 import com.kcjmowright.zerodte.service.PriceService;
-import com.kcjmowright.zerodte.service.ZeroDTEAgentService;
-import com.pangility.schwab.api.client.accountsandtrading.model.order.Order;
 import com.pangility.schwab.api.client.marketdata.model.chains.OptionChainResponse;
 import com.pangility.schwab.api.client.marketdata.model.movers.MoversRequest;
 import com.pangility.schwab.api.client.marketdata.model.movers.Screener;
@@ -17,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -25,7 +24,7 @@ import java.util.List;
 @Slf4j
 @RequestMapping("/api/v1")
 public class PriceController {
-  private final ZeroDTEAgentService agentService;
+
   private final PriceService priceService;
 
   @GetMapping("/price")
@@ -73,7 +72,7 @@ public class PriceController {
    */
   @GetMapping("/movers/{indexSymbol}")
   public Flux<Screener> getMovers(@PathVariable String indexSymbol) {
-    return agentService.callMovers(MoversRequest.IndexSymbol.valueOf(indexSymbol));
+    return priceService.callMovers(MoversRequest.IndexSymbol.valueOf(indexSymbol));
   }
 
   @GetMapping("/option/chain/{symbol}")
@@ -81,23 +80,29 @@ public class PriceController {
       @PathVariable String symbol,
       @RequestParam(value = "fromDate") LocalDate fromDate,
       @RequestParam(value = "toDate") LocalDate toDate) {
-    return agentService.getOptionChain(symbol, fromDate, toDate);
+    return priceService.getOptionChain(symbol, fromDate, toDate);
   }
 
   @GetMapping("/option/zero-dte-iron-condor")
-  public Mono<IronCondorContracts> getZeroDTEIronCondor(@RequestParam String symbol) {
-    final LocalDate today = LocalDate.now();
-    return agentService.findIronCondor(symbol, today, today);
-  }
-
-  @GetMapping("/option/zero-dte-iron-condor/order")
-  public Mono<Order> getZeroDTEIronCondorOrder(@RequestParam String symbol) {
-    final LocalDate today = LocalDate.now();
-    return agentService.buildIronCondorOrder(agentService.findIronCondor(symbol, today, today));
+  public Mono<IronCondorContracts> getZeroDTEIronCondor(
+      @RequestParam("symbol") String symbol,
+      @RequestParam(value = "putLongDelta", required = false, defaultValue = "-10") BigDecimal putLongDelta,
+      @RequestParam(value = "putShortDelta", required = false, defaultValue = "-40") BigDecimal putShortDelta,
+      @RequestParam(value = "callShortDelta", required = false, defaultValue = "40") BigDecimal callShortDelta,
+      @RequestParam(value = "callLongDelta", required = false, defaultValue = "10") BigDecimal callLongDelta) {
+    final LocalDate theDate = LocalDate.now();
+    return priceService.findIronCondor(symbol, theDate, theDate, putLongDelta, putShortDelta, callShortDelta, callLongDelta);
   }
 
   @GetMapping("/option/iron-condor")
-  public Mono<IronCondorContracts> getIronCondor(@RequestParam("symbol") String symbol, @RequestParam("dte") LocalDate dte) {
-    return agentService.findIronCondor(symbol, dte, dte);
+  public Mono<IronCondorContracts> getIronCondor(
+      @RequestParam("symbol") String symbol,
+      @RequestParam(value = "dte", required = false) LocalDate dte,
+      @RequestParam(value = "putLongDelta", required = false, defaultValue = "-10") BigDecimal putLongDelta,
+      @RequestParam(value = "putShortDelta", required = false, defaultValue = "-40") BigDecimal putShortDelta,
+      @RequestParam(value = "callShortDelta", required = false, defaultValue = "40") BigDecimal callShortDelta,
+      @RequestParam(value = "callLongDelta", required = false, defaultValue = "10") BigDecimal callLongDelta) {
+    final LocalDate theDate = dte == null ? LocalDate.now() : dte;
+    return priceService.findIronCondor(symbol, theDate, theDate, putLongDelta, putShortDelta, callShortDelta, callLongDelta);
   }
 }

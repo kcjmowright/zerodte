@@ -1,7 +1,5 @@
 package com.kcjmowright.zerodte.service;
 
-import com.kcjmowright.exceptions.ResourceNotAvailableException;
-import com.kcjmowright.zerodte.model.IronCondorContracts;
 import com.kcjmowright.zerodte.model.TickerSymbol;
 import com.kcjmowright.zerodte.model.entity.OrderEntity;
 import com.kcjmowright.zerodte.model.entity.PositionEntity;
@@ -9,25 +7,12 @@ import com.kcjmowright.zerodte.model.entity.QuoteEntity;
 import com.kcjmowright.zerodte.repository.OrderRepository;
 import com.kcjmowright.zerodte.repository.PositionRepository;
 import com.kcjmowright.zerodte.repository.QuoteRepository;
-import com.pangility.schwab.api.client.accountsandtrading.SchwabAccountsAndTradingApiClient;
-import com.pangility.schwab.api.client.accountsandtrading.model.account.Account;
 import com.pangility.schwab.api.client.accountsandtrading.model.account.Position;
-import com.pangility.schwab.api.client.accountsandtrading.model.instrument.AssetType;
-import com.pangility.schwab.api.client.accountsandtrading.model.instrument.EquityInstrument;
-import com.pangility.schwab.api.client.accountsandtrading.model.order.ComplexOrderStrategyType;
 import com.pangility.schwab.api.client.accountsandtrading.model.order.Duration;
 import com.pangility.schwab.api.client.accountsandtrading.model.order.Order;
 import com.pangility.schwab.api.client.accountsandtrading.model.order.OrderLegCollection;
-import com.pangility.schwab.api.client.accountsandtrading.model.order.OrderRequest;
 import com.pangility.schwab.api.client.accountsandtrading.model.order.OrderType;
-import com.pangility.schwab.api.client.accountsandtrading.model.order.Session;
 import com.pangility.schwab.api.client.accountsandtrading.model.order.Status;
-import com.pangility.schwab.api.client.marketdata.SchwabMarketDataApiClient;
-import com.pangility.schwab.api.client.marketdata.model.chains.OptionChainRequest;
-import com.pangility.schwab.api.client.marketdata.model.chains.OptionChainResponse;
-import com.pangility.schwab.api.client.marketdata.model.chains.OptionContract;
-import com.pangility.schwab.api.client.marketdata.model.movers.MoversRequest;
-import com.pangility.schwab.api.client.marketdata.model.movers.Screener;
 import com.pangility.schwab.api.client.marketdata.model.quotes.QuoteResponse;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -41,7 +26,6 @@ import reactor.util.retry.Retry;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -49,19 +33,16 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static java.util.function.Predicate.not;
+import static java.util.stream.Collectors.toMap;
 
 @Service
 @RequiredArgsConstructor
@@ -74,12 +55,12 @@ public class ZeroDTEAgentService {
   private static final long CLOSE_TIME_MINUTES_BEFORE = 10L; // Close all remaining positions 10 minutes before close
   private static final ZoneId CST = ZoneId.of("America/Chicago");
 
+  private final AccountService accountService;
+  private final OrderService orderService;
+  private final PriceService priceService;
   private final OrderRepository orderRepository;
   private final PositionRepository positionRepository;
   private final QuoteRepository quoteRepository;
-  private final SchwabAccountsAndTradingApiClient accountsAndTradingClient;
-  private final SchwabApiClientTokenService tokenService;
-  private final SchwabMarketDataApiClient marketDataClient;
 
   @Value("${zerodte.agent.symbol:QQQ}")
   private String symbol;
@@ -122,9 +103,6 @@ public class ZeroDTEAgentService {
     log.info("Executing strategy.  Open order id: {}, Open Positions: {}, Closed Positions: {}",
         openOrderId.get(), openPositionIds.get(), closedPositionIds.get());
     ZonedDateTime now = ZonedDateTime.now(CST);
-//    if (now.getDayOfWeek().getValue() > 5) {
-//      return; // Skip weekends
-//    }
     LocalTime nowTime = now.toLocalTime();
     final LocalDate today = LocalDate.now();
     if (nowTime.isAfter(TRADE_TIME_OPEN) && nowTime.isBefore(CLOSE_TIME)) {
@@ -141,212 +119,32 @@ public class ZeroDTEAgentService {
   }
 
   /**
-   * Get a {@link QuoteResponse} for the given symbol.
-   * @param symbol the equity symbol.
-   * @return the {@link QuoteResponse}
-   */
-  public Mono<QuoteResponse> getQuote(String symbol) {
-    return marketDataClient.fetchQuoteToMono(symbol)
-        .retryWhen(Retry.backoff(3, java.time.Duration.ofSeconds(2)));
-        // .log();
-  }
-
-  /**
-   * Get the option chains for the given date range.
-   * @param symbol the underlying equity symbol.
-   * @param fromDate the from date.
-   * @param toDate the to date.
-   * @return the {@link OptionChainResponse}
-   */
-  public Mono<OptionChainResponse> getOptionChain(String symbol, LocalDate fromDate, LocalDate toDate) {
-    var request = OptionChainRequest.builder().withFromDate(fromDate).withToDate(toDate).withSymbol(symbol).build();
-    return marketDataClient.fetchOptionChainToMono(request)
-        .retryWhen(Retry.backoff(3, java.time.Duration.ofSeconds(2)));
-        // .log();
-  }
-
-  /**
-   * Get the movers for a given index symbol.
-   * @param indexSymbol the {@link MoversRequest.IndexSymbol}
-   * @return a {@link Screener}
-   */
-  public Flux<Screener> callMovers(MoversRequest.IndexSymbol indexSymbol) {
-    MoversRequest moversRequest = MoversRequest.builder().withIndexSymbol(indexSymbol).build();
-    return marketDataClient.fetchMoversToFlux(moversRequest);
-  }
-
-  /**
-   * Find the contracts that would make up an Iron Condor for the given underlying symbol and date range.
-   * @param symbol the underlying equity symbol.
-   * @param fromDate the from date.
-   * @param toDate the to date.
-   * @return a {@link IronCondorContracts}
-   */
-  public Mono<IronCondorContracts> findIronCondor(String symbol, LocalDate fromDate, LocalDate toDate) {
-    return getOptionChain(symbol, fromDate, toDate)
-        .handle((optionChainResponse, sink) -> {
-          if (optionChainResponse == null
-              || optionChainResponse.getCallExpDateMap() == null
-              || optionChainResponse.getCallExpDateMap().isEmpty()
-              || optionChainResponse.getPutExpDateMap() == null
-              || optionChainResponse.getPutExpDateMap().isEmpty()) {
-            log.error("Option chain is empty or null.");
-            sink.error(new ResourceNotAvailableException("Option chain is not currently available."));
-            return;
-          }
-
-          List<OptionContract> callContracts =
-              optionChainResponse.getCallExpDateMap().values().iterator().next().values().stream()
-              .flatMap(Collection::stream).toList();
-          List<OptionContract> putContracts =
-              optionChainResponse.getPutExpDateMap().values().iterator().next().values().stream()
-              .flatMap(Collection::stream).toList();
-
-          Optional<OptionContract> optionalShortPut =
-              findOption(putContracts, this.putShortDelta, OptionContract.PutCall.PUT);
-          Optional<OptionContract> optionalLongPut =
-              findOption(putContracts, this.putLongDelta, OptionContract.PutCall.PUT);
-          Optional<OptionContract> optionalShortCall =
-              findOption(callContracts, this.callShortDelta, OptionContract.PutCall.CALL);
-          Optional<OptionContract> optionalLongCall =
-              findOption(callContracts, this.callLongDelta, OptionContract.PutCall.CALL);
-
-          if (optionalShortPut.isEmpty()
-              || optionalLongPut.isEmpty()
-              || optionalShortCall.isEmpty()
-              || optionalLongCall.isEmpty()) {
-            log.error("Could not find required options.");
-            sink.error(new ResourceNotAvailableException("Could not find required options"));
-            return;
-          }
-
-          OptionContract shortPut = optionalShortPut.get();
-          OptionContract longPut = optionalLongPut.get();
-          OptionContract shortCall = optionalShortCall.get();
-          OptionContract longCall = optionalLongCall.get();
-          sink.next(new IronCondorContracts(longCall, shortCall, longPut, shortPut));
-        });
-  }
-
-  /**
-   * Get the {@link QuoteResponse}s for the given equity symbols.
-   * @param symbols equity symbols.
-   * @return {@link QuoteResponse}s.
-   */
-  public Flux<QuoteResponse> getQuotes(Collection<String> symbols) {
-    return Flux.fromIterable(symbols).flatMap(symbol -> Flux.from(getQuote(symbol)));
-  }
-
-  /**
-   * Build an Iron Condor option order from the given contracts.
-   * @param ironCondorContracts The contracts used in an Iron Condor.
-   * @return an {@link Order} built from the given contracts.
-   */
-  public Mono<Order> buildIronCondorOrder(Mono<IronCondorContracts> ironCondorContracts) {
-    return ironCondorContracts.map(ironCondor -> {
-      OptionContract shortPut = ironCondor.shortPut();
-      OptionContract longPut = ironCondor.longPut();
-      OptionContract shortCall = ironCondor.shortCall();
-      OptionContract longCall = ironCondor.longCall();
-
-      List<OrderLegCollection> orderLegCollections = List.of(
-          createOrderLegCollection(shortPut.getSymbol(), quantity.negate(), OrderLegCollection.Instruction.SELL_TO_OPEN),
-          createOrderLegCollection(longPut.getSymbol(), quantity, OrderLegCollection.Instruction.BUY_TO_OPEN),
-          createOrderLegCollection(shortCall.getSymbol(), quantity.negate(), OrderLegCollection.Instruction.SELL_TO_OPEN),
-          createOrderLegCollection(longCall.getSymbol(), quantity, OrderLegCollection.Instruction.BUY_TO_OPEN));
-
-      BigDecimal midShortPut = shortPut.getAskPrice()
-          .add(shortPut.getBidPrice())
-          .divide(BigDecimal.TWO, MathContext.DECIMAL64).setScale(3, RoundingMode.HALF_UP);
-      BigDecimal midLongPut = longPut.getAskPrice()
-          .add(longPut.getBidPrice())
-          .divide(BigDecimal.TWO, MathContext.DECIMAL64).setScale(3, RoundingMode.HALF_UP);
-      BigDecimal midShortCall = shortCall.getAskPrice()
-          .add(shortCall.getBidPrice())
-          .divide(BigDecimal.TWO, MathContext.DECIMAL64).setScale(3, RoundingMode.HALF_UP);
-      BigDecimal midLongCall = longCall.getAskPrice()
-          .add(longCall.getBidPrice())
-          .divide(BigDecimal.TWO, MathContext.DECIMAL64).setScale(3, RoundingMode.HALF_UP);
-
-      Order order = new Order();
-      // order.setRequestedDestination(RequestedDestination.AUTO);
-      order.setSession(Session.NORMAL);
-      order.setDuration(Duration.DAY);
-      order.setOrderType(OrderType.LIMIT);
-      order.setQuantity(quantity.negate());
-      order.setPrice(midLongPut.subtract(midShortPut).add(midLongCall).subtract(midShortCall));
-      order.setComplexOrderStrategyType(ComplexOrderStrategyType.IRON_CONDOR);
-      order.setOrderLegCollection(orderLegCollections);
-      return order;
-    });
-  }
-
-  /**
-   * Fetch the broker {@link Account} info.
-   * @return the {@link Account}.
-   */
-  public Mono<Account> fetchAccount() {
-    return accountsAndTradingClient
-        .fetchAccountToMono(tokenService.getUserId(), tokenService.getEncryptedAccountHash(), "positions")
-        .retryWhen(Retry.backoff(3, java.time.Duration.ofSeconds(2)));
-        // .log();
-  }
-
-  /**
-   * Fetch {@link Order}s entered today.
-   * @return Today's {@link Order}s.
-   */
-  public Flux<Order> fetchOrders() {
-    ZonedDateTime fromEnteredTime = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS);
-    ZonedDateTime now = ZonedDateTime.now();
-    OrderRequest orderRequest = OrderRequest.builder()
-        .withFromEnteredTime(fromEnteredTime)
-        .withToEnteredTime(now)
-        .build();
-    return accountsAndTradingClient
-        .fetchOrdersToFlux(tokenService.getUserId(), tokenService.getEncryptedAccountHash(), orderRequest)
-        .retryWhen(Retry.backoff(3, java.time.Duration.ofSeconds(2)));
-        // .log();
-  }
-
-  /**
-   * Fetch an {@link Order} by ID.
-   * @param orderId the {@link Order} ID.
-   * @return the {@link Order}
-   */
-  public Mono<Order> fetchOrder(Long orderId) {
-    return accountsAndTradingClient
-        .fetchOrderToMono(tokenService.getUserId(), tokenService.getEncryptedAccountHash(), orderId)
-        .retryWhen(Retry.backoff(3, java.time.Duration.ofSeconds(2)));
-        // .log();
-  }
-
-  /**
-   * Place a live order on the broker platform.
-   * @param order {@link Order}.
-   * @return the broker response.
-   */
-  Mono<String> placeOrder(Order order) {
-    return accountsAndTradingClient
-        .placeOrder(tokenService.getUserId(), tokenService.getEncryptedAccountHash(), order)
-        .retryWhen(Retry.backoff(3, java.time.Duration.ofSeconds(2)));
-        // .log();
-  }
-
-  /**
    * Submit an IronCondor order.
    * @param symbol the underlying symbol.
    * @param fromDate the from date.
    * @param toDate the to date.
    */
   void submitIronCondorOrder(String symbol, LocalDate fromDate, LocalDate toDate) {
-    Mono<Order> newOrder = buildIronCondorOrder(findIronCondor(symbol, fromDate, toDate));
+    Mono<Order> newOrder = orderService.buildIronCondorOrder(
+        priceService.findIronCondor(
+            symbol,
+            fromDate,
+            toDate,
+            putLongDelta,
+            putShortDelta,
+            callShortDelta,
+            callLongDelta),
+        quantity
+    );
     Mono<Order> placedOrder = simulated ?
         newOrder.map(order -> {
           order.setOrderId(new Random().nextLong());
           order.setEnteredTime(ZonedDateTime.now());
           return order;
-        }) : newOrder.flatMap(order -> placeOrder(order).thenMany(fetchOrders()).next());
+        }) :
+        newOrder
+            .flatMap(order -> orderService.placeOrder(order)
+                .thenMany(orderService.fetchOrders(null, null)).next());
 
     placedOrder.subscribe(orderResult -> {
       openOrderId.set(orderResult.getOrderId());
@@ -384,7 +182,7 @@ public class ZeroDTEAgentService {
           .forEach(positionRepository::save);
       openOrderId.set(null);
     } else {
-      fetchOrder(orderIds.getFirst())
+      orderService.fetchOrder(orderIds.getFirst())
           .filter(order -> order.getStatus() == Status.FILLED)
           .blockOptional()
           .ifPresent(order -> {
@@ -420,7 +218,7 @@ public class ZeroDTEAgentService {
    * @param symbols filter by set of equity symbols.
    */
   void processOpenPositions(Set<String> symbols) {
-    fetchAccount()
+    accountService.fetchAccount()
         .flatMapMany(account -> Flux.fromIterable(account.getSecuritiesAccount().getPositions()))
         .filter(p -> symbols.contains(p.getInstrument().getSymbol()))
         .map(this::mapPositionToPositionEntity)
@@ -456,11 +254,11 @@ public class ZeroDTEAgentService {
       return BigDecimal.ZERO;
     }
     Map<String, PositionEntity> positions = positionRepository.findBySymbolIn(symbols).stream()
-        .collect(Collectors.toMap(PositionEntity::getSymbol, Function.identity()));
+        .collect(toMap(PositionEntity::getSymbol, Function.identity()));
     BigDecimal purchasePrice = positions.values().stream()
         .map(position -> position.getPurchasePrice().multiply(position.getQuantity()))
         .reduce(BigDecimal.ZERO, BigDecimal::add);
-    BigDecimal currentPrice = getQuotes(symbols).toStream()
+    BigDecimal currentPrice = priceService.getQuoteResponses(symbols).toStream()
         .map(quoteResponse -> {
           PositionEntity position = positions.get(quoteResponse.getSymbol());
           BigDecimal mark = getMark(quoteResponse);
@@ -507,34 +305,11 @@ public class ZeroDTEAgentService {
     positionEntity.setCreated(LocalDateTime.now());
     positionEntity.setSymbol(tickerSymbol.getSymbol());
     positionEntity.setType(tickerSymbol.getType());
-    BigDecimal mark = getMark(getQuote(tickerSymbol.getSymbol()).block());
+    BigDecimal mark = getMark(priceService.getQuoteResponse(tickerSymbol.getSymbol()).block());
     positionEntity.setPurchasePrice(mark);
     positionEntity.setQuantity(order.getQuantity());
     openPositionIds.get().add(tickerSymbol);
     return positionEntity;
-  }
-
-  /**
-   * Create an order leg.
-   *
-   * @param symbol the ticker symbol of interest.
-   * @param quantity the quantity
-   * @param instruction Buy to open, buy to close, sell to open, sell to close.
-   * @return an OrderLegCollection
-   */
-  private OrderLegCollection createOrderLegCollection(
-      String symbol,
-      BigDecimal quantity,
-      OrderLegCollection.Instruction instruction) {
-
-    EquityInstrument instrument = new EquityInstrument();
-    instrument.setAssetType(AssetType.OPTION);
-    instrument.setSymbol(symbol);
-    OrderLegCollection orderLegCollection = new OrderLegCollection();
-    orderLegCollection.setInstruction(instruction);
-    orderLegCollection.setQuantity(quantity);
-    orderLegCollection.setInstrument(instrument);
-    return orderLegCollection;
   }
 
 //  /**
@@ -590,7 +365,7 @@ public class ZeroDTEAgentService {
       return;
     }
     List<Position> positions =
-        fetchAccount()
+        accountService.fetchAccount()
             .retryWhen(Retry.backoff(3, java.time.Duration.ofSeconds(2)))
             //.log()
             .flatMapMany(account -> Flux.fromStream(account.getSecuritiesAccount().getPositions().stream()))
@@ -607,7 +382,7 @@ public class ZeroDTEAgentService {
                   position.getLongQuantity() : position.getShortQuantity();
           OrderLegCollection.Instruction instruction = quantity.compareTo(BigDecimal.ZERO) < 0 ?
               OrderLegCollection.Instruction.BUY_TO_CLOSE : OrderLegCollection.Instruction.SELL_TO_CLOSE;
-          return createOrderLegCollection(position.getInstrument().getSymbol(), quantity.negate(), instruction);
+          return orderService.createOrderLegCollection(position.getInstrument().getSymbol(), quantity.negate(), instruction);
         })
         .toList();
 
@@ -615,7 +390,7 @@ public class ZeroDTEAgentService {
     order.setOrderLegCollection(orderLegCollections);
     order.setOrderType(OrderType.MARKET);
     order.setDuration(Duration.DAY);
-    placeOrder(order).subscribe();
+    orderService.placeOrder(order).subscribe();
   }
 
   /**
@@ -633,8 +408,9 @@ public class ZeroDTEAgentService {
    */
   private void closeSimulatedPositions(Collection<TickerSymbol> tickerSymbols) {
     Collection<String> symbols = tickerSymbolsToSymbols(tickerSymbols);
-    Map<String, BigDecimal> quotes =
-        getQuotes(symbols).toStream().collect(Collectors.toMap(QuoteResponse::getSymbol, this::getMark));
+    Map<String, BigDecimal> quotes = priceService.getQuoteResponses(symbols)
+        .toStream()
+        .collect(toMap(QuoteResponse::getSymbol, this::getMark));
     LocalDateTime now = LocalDateTime.now();
     positionRepository.findBySymbolIn(symbols).stream().peek(position -> {
       position.setClosed(now);
@@ -644,23 +420,6 @@ public class ZeroDTEAgentService {
     closedPositionIds.get().addAll(tickerSymbols);
   }
 
-  /**
-   * Find option contracts with the given delta and option type.
-   * @param options a list of option contracts.
-   * @param delta the target delta.
-   * @param putCall the type of contract, PUT or CALL.
-   * @return the option contract that most closely matches the given parameters.
-   */
-  private Optional<OptionContract> findOption(
-      List<OptionContract> options,
-      BigDecimal delta,
-      OptionContract.PutCall putCall) {
-
-    return options.stream()
-        .filter(option -> option.getPutCall() == putCall)
-        .filter(not(option -> Objects.equals(option.getDelta(), BigDecimal.ZERO)))
-        .min(Comparator.comparing(option -> option.getDelta().subtract(delta).abs()));
-  }
 
   /**
    * Initialize the state of this service.
