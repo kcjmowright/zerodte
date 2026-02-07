@@ -1,6 +1,7 @@
 package com.kcjmowright.zerodte.service;
 
 import com.kcjmowright.zerodte.model.GEXFeatures;
+import com.kcjmowright.zerodte.model.GEXData;
 import com.kcjmowright.zerodte.model.TotalGEX;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -59,25 +60,27 @@ public class GEXDataPreprocessor {
     // Price dynamics
     featureIndices.put("priceVelocity", idx++);
     featureIndices.put("priceAcceleration", idx++);
-    featureIndices.put("volatility5min", idx++);
-    featureIndices.put("volatility15min", idx++);
+//    featureIndices.put("volatility5min", idx++);
+//    featureIndices.put("volatility15min", idx++);
 
     // Technical indicators
-    featureIndices.put("rsi", idx++);
-    featureIndices.put("macdSignal", idx++);
+    featureIndices.put("cci", idx++);
+    featureIndices.put("stochastic", idx++);
 
     // Volume/liquidity
     featureIndices.put("relativeVolume", idx++);
 
     // Regime indicators
     featureIndices.put("isPositiveGEX", idx++);
-    featureIndices.put("gexRegimeStrength", idx);
+    featureIndices.put("gexRegimeStrength", idx++);
+
+    featureIndices.put("vix", idx);
   }
 
   /**
    * Convert GEX snapshots into training dataset
    */
-  public DataSet createDataSet(List<TotalGEX> snapshots,
+  public DataSet createDataSet(List<GEXData> snapshots,
                                List<GEXFeatures> features,
                                int predictionHorizonMinutes) {
 
@@ -88,12 +91,13 @@ public class GEXDataPreprocessor {
     INDArray labelVector = Nd4j.create(numSamples, 1);
 
     for (int i = 0; i < numSamples; i++) {
-      TotalGEX currentSnapshot = snapshots.get(i);
+      GEXData currentGEXData = snapshots.get(i);
+      TotalGEX currentSnapshot = currentGEXData.getTotalGEX();
       GEXFeatures currentFeatures = features.get(i);
-      TotalGEX futureSnapshot = snapshots.get(i + predictionHorizonMinutes);
+      TotalGEX futureSnapshot = snapshots.get(i + predictionHorizonMinutes).getTotalGEX();
 
       // Extract features
-      double[] featureVector = extractFeatureVector(currentSnapshot, currentFeatures);
+      double[] featureVector = extractFeatureVector(currentGEXData, currentFeatures);
       featureMatrix.putRow(i, Nd4j.create(featureVector));
 
       // Target: percentage price change
@@ -123,7 +127,7 @@ public class GEXDataPreprocessor {
   /**
    * Create time series dataset for LSTM - Using 3D labels with masking
    */
-  public DataSet createTimeSeriesDataSet(List<TotalGEX> snapshots,
+  public DataSet createTimeSeriesDataSet(List<GEXData> snapshots,
                                          List<GEXFeatures> features,
                                          int sequenceLength,
                                          int predictionHorizon) {
@@ -144,29 +148,29 @@ public class GEXDataPreprocessor {
     for (int i = 0; i < numSamples; i++) {
       // Get sequence of features
       for (int t = 0; t < sequenceLength; t++) {
-        TotalGEX snapshot = snapshots.get(i + t);
+        GEXData snapshot = snapshots.get(i + t);
         GEXFeatures feature = features.get(i + t);
         double[] featureVector = extractFeatureVector(snapshot, feature);
 
         for (int f = 0; f < numFeatures; f++) {
-          featureTensor.putScalar(new int[]{i, f, t}, featureVector[f]);
+          featureTensor.putScalar(new int[]{ i, f, t }, featureVector[f]);
         }
       }
 
       // Target is price change after sequence
-      TotalGEX currentSnapshot = snapshots.get(i + sequenceLength - 1);
-      TotalGEX futureSnapshot = snapshots.get(i + sequenceLength + predictionHorizon);
+      GEXData currentSnapshot = snapshots.get(i + sequenceLength - 1);
+      GEXData futureSnapshot = snapshots.get(i + sequenceLength + predictionHorizon);
 
       double priceChange = calculatePriceChange(
-          currentSnapshot.getSpotPrice(),
-          futureSnapshot.getSpotPrice()
+          currentSnapshot.getTotalGEX().getSpotPrice(),
+          futureSnapshot.getTotalGEX().getSpotPrice()
       );
 
       // Only set label for LAST time step
-      labelTensor.putScalar(new int[]{i, 0, sequenceLength - 1}, priceChange);
+      labelTensor.putScalar(new int[]{ i, 0, sequenceLength - 1 }, priceChange);
 
       // Only last time step is active in mask
-      labelMask.putScalar(new int[]{i, sequenceLength - 1}, 1.0);
+      labelMask.putScalar(new int[]{ i, sequenceLength - 1 }, 1.0);
     }
 
     DataSet dataSet = new DataSet(featureTensor, labelTensor, null, labelMask);
@@ -180,7 +184,8 @@ public class GEXDataPreprocessor {
     return dataSet;
   }
 
-  private double[] extractFeatureVector(TotalGEX snapshot, GEXFeatures features) {
+  public double[] extractFeatureVector(GEXData GEXData, GEXFeatures features) {
+    TotalGEX snapshot = GEXData.getTotalGEX();
     double[] vector = new double[featureIndices.size()];
 
     // Core GEX features
@@ -210,15 +215,12 @@ public class GEXDataPreprocessor {
         snapshot.getTimestamp().getMinute();
 
     // Price dynamics
-    vector[featureIndices.get("priceVelocity")] =
-        features.getPriceVelocity().doubleValue();
-    vector[featureIndices.get("priceAcceleration")] = 0.0; // Calculated separately
-    vector[featureIndices.get("volatility5min")] = 0.0; // Calculated separately
-    vector[featureIndices.get("volatility15min")] = 0.0; // Calculated separately
+    vector[featureIndices.get("priceVelocity")] = features.getPriceVelocity().doubleValue();
+    vector[featureIndices.get("priceAcceleration")] = features.getPriceAcceleration().doubleValue();
 
-    // Technical indicators (placeholders)
-    vector[featureIndices.get("rsi")] = 50.0;
-    vector[featureIndices.get("macdSignal")] = 0.0;
+    // Technical indicators
+    vector[featureIndices.get("cci")] = features.getCci().doubleValue();
+    vector[featureIndices.get("stochastic")] = features.getStochastic().doubleValue();
     vector[featureIndices.get("relativeVolume")] = 1.0;
 
     // Regime indicators
@@ -227,6 +229,7 @@ public class GEXDataPreprocessor {
     vector[featureIndices.get("gexRegimeStrength")] =
         Math.abs(features.getDistanceToFlipPoint().doubleValue());
 
+    vector[featureIndices.get("vix")] = GEXData.getVix().doubleValue();
     return vector;
   }
 
@@ -246,7 +249,7 @@ public class GEXDataPreprocessor {
     }
 
     // Create a 2D array for the label
-    INDArray normalizedArray = Nd4j.create(new double[][]{{normalizedValue}});
+    INDArray normalizedArray = Nd4j.create(new double[][]{{ normalizedValue }});
 
     // Create dataset with dummy features (same shape as training)
     // The targetScaler only operates on labels, but needs a valid DataSet
@@ -284,7 +287,7 @@ public class GEXDataPreprocessor {
       throw new IllegalStateException("Scalers must be fitted first");
     }
 
-    INDArray rawArray = Nd4j.create(new double[][]{{rawValue}});
+    INDArray rawArray = Nd4j.create(new double[][]{{ rawValue }});
     INDArray dummyFeatures = Nd4j.create(1, 1);
     DataSet tempDataset = new DataSet(dummyFeatures, rawArray);
     targetScaler.transform(tempDataset);
@@ -361,7 +364,6 @@ public class GEXDataPreprocessor {
       throw new IllegalStateException("Unable to load scalars due to: %s".formatted(e.getMessage()), e);
     }
   }
-
 
   /**
    * Save trained model to disk

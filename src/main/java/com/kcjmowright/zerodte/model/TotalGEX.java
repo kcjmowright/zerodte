@@ -9,6 +9,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -43,7 +44,7 @@ public class TotalGEX {
       boolean suppressDetails) {
 
     final TotalGEX totalGEX = new TotalGEX();
-    totalGEX.setTimestamp(LocalDateTime.now());
+    totalGEX.setTimestamp(LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES));
     final Map<BigDecimal, BigDecimal> gexAboveSpot = new TreeMap<>(); // Track Total GEX above spot price
     final Map<BigDecimal, BigDecimal> gexBelowSpot = new TreeMap<>(); // Track Total GEX below spot price
 

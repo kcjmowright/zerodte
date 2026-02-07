@@ -22,4 +22,7 @@ public class GEXFeatures {
   private BigDecimal relativePosition; // position between put/call walls
   private Integer minutesToExpiry;
   private BigDecimal priceVelocity; // recent price change
+  private BigDecimal priceAcceleration;
+  private BigDecimal cci;
+  private BigDecimal stochastic;
 }

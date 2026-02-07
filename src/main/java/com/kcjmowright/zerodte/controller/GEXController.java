@@ -2,13 +2,17 @@ package com.kcjmowright.zerodte.controller;
 
 import com.kcjmowright.zerodte.model.BackTestRequest;
 import com.kcjmowright.zerodte.model.BackTestResult;
+import com.kcjmowright.zerodte.model.GEXData;
 import com.kcjmowright.zerodte.model.PredictionRequest;
 import com.kcjmowright.zerodte.model.PricePrediction;
 import com.kcjmowright.zerodte.model.TotalGEX;
+import com.kcjmowright.zerodte.model.TrainingConfig;
+import com.kcjmowright.zerodte.model.TrainingResult;
 import com.kcjmowright.zerodte.model.WalkForwardRequest;
 import com.kcjmowright.zerodte.service.GEXBackTester;
+import com.kcjmowright.zerodte.service.GEXModelTrainer;
 import com.kcjmowright.zerodte.service.GEXPricePredictor;
-import com.kcjmowright.zerodte.service.GammaExposureService;
+import com.kcjmowright.zerodte.service.GEXService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.bind.DefaultValue;
@@ -33,21 +37,34 @@ import java.util.Map;
 @RequestMapping("/api/v1/gex")
 public class GEXController {
 
-  private final GammaExposureService gammaExposureService;
+  private final GEXService gexService;
   private final GEXPricePredictor predictor;
   private final GEXBackTester backtester;
+  private final GEXModelTrainer trainer;
+
+  @GetMapping("/vix/{symbol}")
+  public Flux<GEXData> getTotalGexAndVIXBySymbolBetween(
+      @PathVariable String symbol,
+      @RequestParam(value = "start", required = false) LocalDateTime start,
+      @RequestParam(value = "end", required = false) LocalDateTime end) {
+    return Flux.fromIterable(gexService.getGEXDataBySymbolBetweenStartAndEnd(
+        symbol,
+        start == null ? LocalDateTime.now().withHour(0).withMinute(0) : start,
+        end == null ? LocalDateTime.now().withHour(23).withMinute(59) : end
+    ));
+  }
 
   @GetMapping("/{symbol}")
   public Mono<TotalGEX> getGEX(
       @PathVariable String symbol,
       @RequestParam(value = "expDate", required = false) List<LocalDate> expirationDates,
       @RequestParam(value = "suppressDetails", required = false) @DefaultValue("true") boolean suppressDetails) {
-    return gammaExposureService.computeGammaExposure(symbol, expirationDates, suppressDetails);
+    return gexService.computeGammaExposure(symbol, expirationDates, suppressDetails);
   }
 
   @GetMapping("/expirations/{symbol}")
   public Flux<LocalDate> getGEX(@PathVariable String symbol) {
-    return gammaExposureService.fetchExpirationDates(symbol);
+    return gexService.fetchExpirationDates(symbol);
   }
 
   @GetMapping("/history/datetimes/{symbol}")
@@ -55,7 +72,7 @@ public class GEXController {
       @PathVariable String symbol,
       @RequestParam(value = "start", required = false) LocalDateTime start,
       @RequestParam(value = "end", required = false) LocalDateTime end) {
-    return gammaExposureService.findTotalGEXCaptureDateTimes(
+    return gexService.findTotalGEXCaptureDateTimes(
         symbol,
         start == null ? LocalDateTime.now().withHour(0).withMinute(0) : start,
         end == null ? LocalDateTime.now().withHour(23).withMinute(59) : end
@@ -66,31 +83,41 @@ public class GEXController {
   public Mono<TotalGEX> getTotalGEXHistory(
       @PathVariable String symbol,
       @RequestParam(value = "dateTime", required = false) LocalDateTime dateTime) {
-    return gammaExposureService.getTotalGEXCapture(symbol, dateTime == null ? LocalDateTime.now() : dateTime);
+    return gexService.getTotalGEXCapture(symbol, dateTime == null ? LocalDateTime.now() : dateTime);
   }
 
   @GetMapping("/history/latest/{symbol}")
   public Mono<TotalGEX> getLatestSnapshot(@PathVariable("symbol") String symbol) {
-    return Mono.just(gammaExposureService.getLatestBySymbol(symbol));
+    return Mono.just(gexService.getLatestBySymbol(symbol));
+  }
+
+  @PostMapping("/train")
+  public Mono<TrainingResult> trainModel(@RequestBody TrainingConfig config) {
+    log.info("Received training request: {}", config);
+    TrainingResult result = trainer.trainModel(config);
+    return Mono.just(result);
   }
 
   @PostMapping("/predict")
   public Mono<PricePrediction> predictPrice(@RequestBody PredictionRequest request) {
-    TotalGEX current = gammaExposureService.getLatestBySymbol(request.getSymbol());
-    List<TotalGEX> history = gammaExposureService.getMostRecentBySymbol(request.getSymbol(), 60);
-    PricePrediction prediction = predictor.predict(current, history, request.getMinutesAhead());
+    List<GEXData> history = gexService.getGEXDataBySymbolBetweenStartAndEnd(
+        request.getSymbol(),
+        LocalDateTime.now().minusDays(3),
+        LocalDateTime.now()
+    );
+    PricePrediction prediction = predictor.predict(history.getLast(), history, request.getMinutesAhead());
     return Mono.just(prediction);
   }
 
   @PostMapping("/backtest")
   public Mono<BackTestResult> runBacktest(@RequestBody BackTestRequest request) {
-    Mono<List<TotalGEX>> data = gammaExposureService.findTotalGEXBySymbolBetween(
+    List<GEXData> data = gexService.getGEXDataBySymbolBetweenStartAndEnd(
       request.getSymbol(),
       request.getStartDate(),
       request.getEndDate()
-    ).collectList();
+    );
     BackTestResult result = backtester.runBacktest(
-        data.block(),
+        data,
         request.getPredictionHorizon(),
         request.getMinHistorySize()
     );
@@ -99,13 +126,13 @@ public class GEXController {
 
   @PostMapping("/backtest/walk-forward")
   public Mono<Map<String, Object>> walkForwardTest(@RequestBody WalkForwardRequest request) {
-    Mono<List<TotalGEX>> data = gammaExposureService.findTotalGEXBySymbolBetween(
+    List<GEXData> data = gexService.getGEXDataBySymbolBetweenStartAndEnd(
         request.getSymbol(),
         request.getStartDate(),
         request.getEndDate()
-    ).collectList();
+    );
     Map<String, Object> results = backtester.walkForwardOptimization(
-        data.block(),
+        data,
         request.getTrainingWindow(),
         request.getTestingWindow()
     );

@@ -1,5 +1,6 @@
 package com.kcjmowright.zerodte.repository;
 
+import com.kcjmowright.zerodte.model.GEXDataProjection;
 import com.kcjmowright.zerodte.model.TotalGEX;
 import com.kcjmowright.zerodte.model.entity.TotalGEXEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -30,4 +31,24 @@ public interface TotalGEXRepository extends JpaRepository<TotalGEXEntity, Long> 
 
   @Query("SELECT data FROM TotalGEXEntity WHERE symbol = :symbol ORDER BY created DESC LIMIT :limit")
   List<TotalGEX> getMostRecentBySymbol(String symbol, int limit);
+
+  @Query(value = """
+    SELECT
+        a.created as created,
+        a.symbol as symbol,
+        a.data as totalGEX,
+        b.mark as vix,
+        q.open as open,
+        q.close as close,
+        q.low as low,
+        q.high as high
+    FROM totalgex a
+        LEFT JOIN quote b ON a.created = b.created
+        LEFT OUTER JOIN quote q ON a.created = q.created
+    WHERE a.symbol = :symbol
+        AND q.symbol = :symbol
+        AND b.symbol = '$VIX'
+        AND a.created BETWEEN :start AND :end
+    ORDER BY created""", nativeQuery = true)
+  List<GEXDataProjection> getGEXDataBySymbolBetweenStartAndEnd(String symbol, LocalDateTime start, LocalDateTime end);
 }

@@ -1,6 +1,8 @@
 package com.kcjmowright.zerodte.model.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -11,6 +13,8 @@ import java.time.LocalDateTime;
 @Table(name = "quote")
 @Data
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class QuoteEntity {
 
   @Id
@@ -35,6 +39,9 @@ public class QuoteEntity {
 
   @Column(name = "close")
   private BigDecimal close;
+
+  @Column(name = "volume")
+  private Long volume;
 
   @Column(name = "created")
   private LocalDateTime created;

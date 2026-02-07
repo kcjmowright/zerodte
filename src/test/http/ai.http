@@ -6,7 +6,7 @@ Accept: application/json
 {
   "symbol": "$SPX",
   "startDate": "2025-12-29T00:00:00.000000",
-  "endDate": "2026-01-16T15:00:00.000000",
+  "endDate": "2026-02-07T15:00:00.000000",
   "predictionHorizon": 60,
   "modelType": "lstm",
   "numEpochs": 50,

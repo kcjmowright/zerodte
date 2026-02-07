@@ -1,14 +1,13 @@
 package com.kcjmowright.zerodte.service;
 
 import com.kcjmowright.zerodte.model.CrossValidationResult;
+import com.kcjmowright.zerodte.model.GEXData;
 import com.kcjmowright.zerodte.model.GEXFeatures;
 import com.kcjmowright.zerodte.model.HyperparameterResult;
 import com.kcjmowright.zerodte.model.PricePrediction;
 import com.kcjmowright.zerodte.model.ProbabilisticPrediction;
-import com.kcjmowright.zerodte.model.TotalGEX;
 import com.kcjmowright.zerodte.model.TrainingConfig;
 import com.kcjmowright.zerodte.model.TrainingResult;
-import com.kcjmowright.zerodte.repository.TotalGEXRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -27,7 +26,7 @@ public class GEXDeepLearning {
   private final GEXModelTrainer trainer;
   private final GEXPredictor predictor;
   private final GEXDataPreprocessor preprocessor;
-  private final TotalGEXRepository totalGEXRepository;
+  private final GEXService gexService;
 
   public void run(String... args) {
     log.info("Starting GEX Deep Learning Example");
@@ -94,12 +93,15 @@ public class GEXDeepLearning {
     // 5. Make predictions with trained model
     predictor.setModel(preprocessor.loadModel());
 
-    TotalGEX testSnapshot = totalGEXRepository.getLatestBySymbol(symbol);
-    List<TotalGEX> history = totalGEXRepository.getMostRecentBySymbol(symbol, 60);
-    PricePrediction prediction = predictor.predict(testSnapshot, history, 60);
+    List<GEXData> history = gexService.getGEXDataBySymbolBetweenStartAndEnd(
+        symbol,
+        LocalDateTime.now().minusDays(7),
+        LocalDateTime.now()
+    );
+    PricePrediction prediction = predictor.predict(history.getLast(), history, 60);
 
     log.info("Sample Prediction:");
-    log.info("  Current Price: {}", testSnapshot.getSpotPrice());
+    log.info("  Current Price: {}", history.getLast().getTotalGEX().getSpotPrice());
     log.info("  Predicted Price: {}", prediction.getPredictedPrice());
     log.info("  Direction: {}", prediction.getDirection());
     log.info("  Confidence: {}", prediction.getConfidence());
@@ -119,7 +121,7 @@ public class GEXDeepLearning {
     hyperparamGrid.put("numEpochs", List.of(30, 50, 100));
 
     // Load data
-    List<TotalGEX> snapshots = totalGEXRepository.getTotalGEXBySymbolBetween(
+    List<GEXData> snapshots = gexService.getGEXDataBySymbolBetweenStartAndEnd(
         symbol,
         start,
         end
@@ -150,7 +152,11 @@ public class GEXDeepLearning {
    */
   public void crossValidationExample(String symbol, LocalDateTime start, LocalDateTime end) {
     log.info("=== Example 3: Cross-Validation ===");
-    List<TotalGEX> snapshots = totalGEXRepository.getTotalGEXBySymbolBetween(symbol, start, end);
+    List<GEXData> snapshots = gexService.getGEXDataBySymbolBetweenStartAndEnd(
+        symbol,
+        start,
+        end
+    );
     List<GEXFeatures> features = extractAllFeatures(snapshots);
     TrainingConfig baseConfig = TrainingConfig.builder()
         .symbol(symbol)
@@ -186,10 +192,13 @@ public class GEXDeepLearning {
     predictor.setModel(preprocessor.loadModel());
 
     // Make multi-horizon predictions
-    TotalGEX current = totalGEXRepository.getLatestBySymbol(symbol);
-    List<TotalGEX> history = totalGEXRepository.getMostRecentBySymbol(symbol, 60);
+    List<GEXData> history = gexService.getGEXDataBySymbolBetweenStartAndEnd(
+        symbol,
+        LocalDateTime.now().minusDays(7),
+        LocalDateTime.now()
+    );
     List<Integer> horizons = List.of(15, 30, 60);
-    Map<Integer, PricePrediction> predictions = predictor.predictMultiHorizon(current, history, horizons);
+    Map<Integer, PricePrediction> predictions = predictor.predictMultiHorizon(history.getLast(), history, horizons);
 
     log.info("Multi-horizon predictions:");
     predictions.forEach((horizon, pred) ->
@@ -202,7 +211,7 @@ public class GEXDeepLearning {
 
     // Probabilistic prediction with uncertainty
     ProbabilisticPrediction probPred = predictor.predictWithUncertainty(
-        current,
+        history.getLast(),
         history,
         60,
         100 // Monte Carlo samples
@@ -271,11 +280,11 @@ public class GEXDeepLearning {
     }
   }
 
-  private List<GEXFeatures> extractAllFeatures(List<TotalGEX> snapshots) {
+  private List<GEXFeatures> extractAllFeatures(List<GEXData> snapshots) {
     GEXFeatureExtractor extractor = new GEXFeatureExtractor();
     List<GEXFeatures> features = new ArrayList<>();
     for (int i = 0; i < snapshots.size(); i++) {
-      List<TotalGEX> history = snapshots.subList(Math.max(0, i - 60), i);
+      List<GEXData> history = snapshots.subList(Math.max(0, i - 60), i);
       features.add(extractor.extractFeatures(snapshots.get(i), history));
     }
     return features;

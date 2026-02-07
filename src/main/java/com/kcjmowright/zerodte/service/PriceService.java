@@ -30,6 +30,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
@@ -71,7 +72,8 @@ public class PriceService {
       Integer frequency,
       PeriodType periodType,
       Integer period,
-      Collection<String> studies) {
+      Collection<String> studies,
+      Boolean load) {
     PriceHistoryRequest req = PriceHistoryRequest.builder()
         .withStartDate(start)
         .withEndDate(end)
@@ -84,14 +86,29 @@ public class PriceService {
 
     return marketDataClient.fetchPriceHistoryToMono(req)
         .handle((response, sink) -> {
+          if (load) {
+            response.getCandles().stream().map(candle ->
+                QuoteEntity.builder()
+                    .low(candle.getLow())
+                    .high(candle.getHigh())
+                    .open(candle.getOpen())
+                    .close(candle.getClose())
+                    .mark(candle.getClose())
+                    .volume(candle.getVolume())
+                    .created(candle.getDatetimeISO8601().truncatedTo(ChronoUnit.MINUTES))
+                    .symbol(symbol)
+                    .build()
+            ).forEach(quoteRepository::save);
+          }
           PriceHistoryStudyResponse quotesStudyResponse = new PriceHistoryStudyResponse();
           quotesStudyResponse.setSymbol(symbol);
-          var l = response.getCandles().stream().map(c -> {
-            PriceHistoryStudy priceHistoryStudy = new PriceHistoryStudy();
-            priceHistoryStudy.setCandle(c);
-            return priceHistoryStudy;
-          }).toList();
-          quotesStudyResponse.setPriceHistoryStudies(l);
+          quotesStudyResponse.setPriceHistoryStudies(
+              response.getCandles().stream().map(c -> {
+                PriceHistoryStudy priceHistoryStudy = new PriceHistoryStudy();
+                priceHistoryStudy.setCandle(c);
+                return priceHistoryStudy;
+              }).toList()
+          );
           sink.next(quotesStudyResponse);
         });
   }
@@ -126,8 +143,8 @@ public class PriceService {
         quote.setOpen(or.getQuote().getOpenPrice());
         quote.setCreated(LocalDateTime.ofInstant(
             Instant.ofEpochMilli(or.getQuote().getQuoteTime()),
-            ZoneId.of("UTC")
-        ));
+            ZoneId.of("America/Chicago")
+        ).truncatedTo(ChronoUnit.MINUTES));
       }
       case QuoteResponse.EquityResponse er -> {
         quote.setMark(er.getQuote().getMark());
@@ -137,8 +154,8 @@ public class PriceService {
         quote.setOpen(er.getQuote().getOpenPrice());
         quote.setCreated(LocalDateTime.ofInstant(
             Instant.ofEpochMilli(er.getQuote().getQuoteTime()),
-            ZoneId.of("UTC")
-        ));
+            ZoneId.of("America/Chicago")
+        ).truncatedTo(ChronoUnit.MINUTES));
       }
       case QuoteResponse.IndexResponse ir -> {
         quote.setMark(ir.getQuote().getLastPrice());
@@ -148,8 +165,8 @@ public class PriceService {
         quote.setOpen(ir.getQuote().getOpenPrice());
         quote.setCreated(LocalDateTime.ofInstant(
             Instant.ofEpochMilli(ir.getQuote().getTradeTime()),
-            ZoneId.of("UTC")
-        ));
+            ZoneId.of("America/Chicago")
+        ).truncatedTo(ChronoUnit.MINUTES));
       }
       default -> {
       }

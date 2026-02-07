@@ -1,0 +1,1 @@
+GET https://127.0.0.1:8443/api/v1/price-history/%24VIX?start=2025-12-29&end=2026-02-06&periodType=day&period=1&frequencyType=minute&frequency=1&load=true

@@ -40,7 +40,8 @@ public class PriceController {
       @RequestParam(name = "periodType", defaultValue = "day") PeriodType periodType,
       @RequestParam(name = "period", defaultValue = "1") Integer period,
       @RequestParam(name = "frequencyType", defaultValue = "minute") FrequencyType frequencyType,
-      @RequestParam(name = "frequency", defaultValue = "1") Integer frequency) {
+      @RequestParam(name = "frequency", defaultValue = "1") Integer frequency,
+      @RequestParam(name = "load", defaultValue = "false") Boolean load) {
 
     return priceService.getPriceHistoryStudy(
         symbol,
@@ -50,7 +51,8 @@ public class PriceController {
         frequency,
         periodType,
         period,
-        List.of()
+        List.of(),
+        load
     );
   }
 

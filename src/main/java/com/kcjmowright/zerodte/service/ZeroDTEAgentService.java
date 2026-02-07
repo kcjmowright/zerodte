@@ -49,8 +49,8 @@ import static java.util.stream.Collectors.toMap;
 @Slf4j
 public class ZeroDTEAgentService {
 
-  private static final LocalTime TRADE_TIME_OPEN = LocalTime.of(9, 0); // 8:45 AM CST
-  private static final LocalTime OPENING_TRADE_TIME_END = LocalTime.of(9, 30); // 9:00 AM CST
+  private static final LocalTime TRADE_TIME_OPEN = LocalTime.of(8, 45); // 8:45 AM CST
+  private static final LocalTime OPENING_TRADE_TIME_END = LocalTime.of(9, 30); // 9:30 AM CST
   private static final LocalTime CLOSE_TIME = LocalTime.of(15, 0); // 3:00 PM CST
   private static final long CLOSE_TIME_MINUTES_BEFORE = 10L; // Close all remaining positions 10 minutes before close
   private static final ZoneId CST = ZoneId.of("America/Chicago");

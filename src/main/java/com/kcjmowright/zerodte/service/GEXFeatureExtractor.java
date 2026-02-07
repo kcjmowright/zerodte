@@ -1,8 +1,13 @@
 package com.kcjmowright.zerodte.service;
 
+import com.kcjmowright.zerodte.model.CommodityChannelIndex;
 import com.kcjmowright.zerodte.model.GEXFeatures;
+import com.kcjmowright.zerodte.model.GEXData;
 import com.kcjmowright.zerodte.model.OptionContractGEX;
+import com.kcjmowright.zerodte.model.StochasticOscillator;
+import com.kcjmowright.zerodte.model.StochasticValue;
 import com.kcjmowright.zerodte.model.TotalGEX;
+import com.kcjmowright.zerodte.model.entity.QuoteEntity;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -16,21 +21,27 @@ import java.util.Map;
 @Service
 public class GEXFeatureExtractor {
 
-  public GEXFeatures extractFeatures(TotalGEX snapshot, List<TotalGEX> historicalSnapshots) {
+  public GEXFeatures extractFeatures(GEXData snapshot, List<GEXData> historicalSnapshots) {
 
-    BigDecimal currentPrice = snapshot.getSpotPrice();
+    TotalGEX totalGEX = snapshot.getTotalGEX();
+    BigDecimal currentPrice = totalGEX.getSpotPrice();
+    BigDecimal velocityEnd = calculatePriceVelocity(historicalSnapshots, 5, 0);
+    BigDecimal velocityPrev = calculatePriceVelocity(historicalSnapshots, 6, 1);
 
     return GEXFeatures.builder()
-        .distanceToCallWall(calculateDistance(currentPrice, snapshot.getCallWall()))
-        .distanceToPutWall(calculateDistance(currentPrice, snapshot.getPutWall()))
-        .distanceToFlipPoint(calculateDistance(currentPrice, snapshot.getFlipPoint()))
-        .callPutGEXRatio(calculateGEXRatio(snapshot))
-        .netGEX(snapshot.getTotalGEX())
-        .gexSkew(calculateGEXSkew(snapshot))
-        .concentrationIndex(calculateConcentration(snapshot))
-        .relativePosition(calculateRelativePosition(snapshot))
-        .minutesToExpiry(calculateMinutesToExpiry(snapshot.getTimestamp()))
-        .priceVelocity(calculatePriceVelocity(historicalSnapshots))
+        .distanceToCallWall(calculateDistance(currentPrice, totalGEX.getCallWall()))
+        .distanceToPutWall(calculateDistance(currentPrice, totalGEX.getPutWall()))
+        .distanceToFlipPoint(calculateDistance(currentPrice, totalGEX.getFlipPoint()))
+        .callPutGEXRatio(calculateGEXRatio(totalGEX))
+        .netGEX(totalGEX.getTotalGEX())
+        .gexSkew(calculateGEXSkew(totalGEX))
+        .concentrationIndex(calculateConcentration(totalGEX))
+        .relativePosition(calculateRelativePosition(totalGEX))
+        .minutesToExpiry(calculateMinutesToExpiry(totalGEX.getTimestamp()))
+        .priceVelocity(velocityEnd)
+        .priceAcceleration(velocityEnd.subtract(velocityPrev))
+        .cci(calculateCci(historicalSnapshots))
+        .stochastic(calculateStochasticDivergence(historicalSnapshots))
         .build();
   }
 
@@ -98,27 +109,24 @@ public class GEXFeatureExtractor {
 
   private Integer calculateMinutesToExpiry(LocalDateTime timestamp) {
     // 0DTE options expire at 3:00 PM CT (15:00)
-    LocalDateTime expiry = timestamp.toLocalDate()
-        .atTime(15, 0);
+    LocalDateTime expiry = timestamp.toLocalDate().atTime(15, 0);
     return (int) Duration.between(timestamp, expiry).toMinutes();
   }
 
-  private BigDecimal calculatePriceVelocity(List<TotalGEX> historical) {
+  private BigDecimal calculatePriceVelocity(List<GEXData> historical, int startLookback, int endLookback) {
     if (historical.size() < 2) {
       return BigDecimal.ZERO;
     }
 
     // Calculate average price change over last 5 minutes
-    int lookback = Math.min(5, historical.size());
-    List<TotalGEX> recent = historical.subList(
-        historical.size() - lookback,
-        historical.size()
-    );
+    int start = historical.size() - Math.min(startLookback, historical.size());
+    int end = (historical.size() < startLookback) ? historical.size() : historical.size() - endLookback;
+    List<GEXData> recent = historical.subList(start, end);
 
     BigDecimal totalChange = BigDecimal.ZERO;
     for (int i = 1; i < recent.size(); i++) {
-      BigDecimal change = recent.get(i).getSpotPrice()
-          .subtract(recent.get(i - 1).getSpotPrice());
+      BigDecimal change = recent.get(i).getTotalGEX().getSpotPrice()
+          .subtract(recent.get(i - 1).getTotalGEX().getSpotPrice());
       totalChange = totalChange.add(change);
     }
 
@@ -127,5 +135,43 @@ public class GEXFeatureExtractor {
         4,
         RoundingMode.HALF_UP
     );
+  }
+
+  private BigDecimal calculateCci(List<GEXData> historicalSnapshots) {
+    if (historicalSnapshots == null || historicalSnapshots.isEmpty()) {
+      return BigDecimal.ZERO;
+    }
+    int first = Math.max(historicalSnapshots.size() - CommodityChannelIndex.DEFAULT_PERIOD * 2, 0);
+    CommodityChannelIndex cci = new CommodityChannelIndex(historicalSnapshots
+        .subList(first, historicalSnapshots.size())
+        .stream()
+        .map(data -> QuoteEntity.builder()
+            .low(data.getLow())
+            .high(data.getHigh())
+            .open(data.getOpen())
+            .close(data.getClose())
+            .build()).toList());
+    return cci.getValues().isEmpty() ? BigDecimal.ZERO : cci.getValues().getLast().getValue();
+  }
+
+  private BigDecimal calculateStochasticDivergence(List<GEXData> historicalSnapshots) {
+    if (historicalSnapshots == null || historicalSnapshots.isEmpty()) {
+      return BigDecimal.ZERO;
+    }
+    int first = Math.max(historicalSnapshots.size() - StochasticOscillator.DEFAULT_PERIOD * 2, 0);
+    StochasticOscillator oscillator = new StochasticOscillator(historicalSnapshots
+        .subList(first, historicalSnapshots.size())
+        .stream()
+        .map(data -> QuoteEntity.builder()
+            .low(data.getLow())
+            .high(data.getHigh())
+            .open(data.getOpen())
+            .close(data.getClose())
+            .build()).toList());
+    if (oscillator.getStochasticValues().isEmpty()) {
+      return BigDecimal.ZERO;
+    }
+    StochasticValue value = oscillator.getStochasticValues().getLast();
+    return value.getK().subtract(value.getD());
   }
 }

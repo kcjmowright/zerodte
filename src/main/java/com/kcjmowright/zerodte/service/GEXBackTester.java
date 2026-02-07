@@ -2,8 +2,8 @@ package com.kcjmowright.zerodte.service;
 
 import com.kcjmowright.zerodte.model.BackTestResult;
 import com.kcjmowright.zerodte.model.BackTestTrade;
+import com.kcjmowright.zerodte.model.GEXData;
 import com.kcjmowright.zerodte.model.PricePrediction;
-import com.kcjmowright.zerodte.model.TotalGEX;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -20,7 +20,7 @@ public class GEXBackTester {
 
   private final GEXPricePredictor predictor;
 
-  public BackTestResult runBacktest(List<TotalGEX> historicalData,
+  public BackTestResult runBacktest(List<GEXData> historicalData,
                                     int predictionHorizonMinutes,
                                     int minHistorySize) {
     List<BackTestTrade> trades = new ArrayList<>();
@@ -30,9 +30,8 @@ public class GEXBackTester {
 
     // Walk forward through historical data
     for (int i = minHistorySize; i < historicalData.size() - predictionHorizonMinutes; i++) {
-
-      TotalGEX currentSnapshot = historicalData.get(i);
-      List<TotalGEX> history = historicalData.subList(
+      GEXData currentSnapshot = historicalData.get(i);
+      List<GEXData> history = historicalData.subList(
           Math.max(0, i - 60), i
       );
 
@@ -44,14 +43,14 @@ public class GEXBackTester {
       );
 
       // Get actual future price
-      TotalGEX futureSnapshot = historicalData.get(i + predictionHorizonMinutes);
-      BigDecimal actualPrice = futureSnapshot.getSpotPrice();
+      GEXData futureSnapshot = historicalData.get(i + predictionHorizonMinutes);
+      BigDecimal actualPrice = futureSnapshot.getTotalGEX().getSpotPrice();
 
       // Record trade
       BackTestTrade trade = BackTestTrade.builder()
-          .entryTime(currentSnapshot.getTimestamp())
-          .entryPrice(currentSnapshot.getSpotPrice())
-          .exitTime(futureSnapshot.getTimestamp())
+          .entryTime(currentSnapshot.getCreated())
+          .entryPrice(currentSnapshot.getTotalGEX().getSpotPrice())
+          .exitTime(futureSnapshot.getCreated())
           .actualPrice(actualPrice)
           .predictedPrice(prediction.getPredictedPrice())
           .direction(prediction.getDirection())
@@ -71,7 +70,7 @@ public class GEXBackTester {
   }
 
   private BackTestResult calculateMetrics(List<BackTestTrade> trades,
-                                          List<TotalGEX> data,
+                                          List<GEXData> data,
                                           Map<String, List<BigDecimal>> regimeErrors) {
     // Direction accuracy
     long correctDirections = trades.stream()
@@ -114,8 +113,8 @@ public class GEXBackTester {
     }
 
     return BackTestResult.builder()
-        .startTime(data.getFirst().getTimestamp())
-        .endTime(data.getLast().getTimestamp())
+        .startTime(data.getFirst().getCreated())
+        .endTime(data.getLast().getCreated())
         .totalPredictions(trades.size())
         .accuracy(accuracy)
         .meanAbsoluteError(mae)
@@ -166,7 +165,7 @@ public class GEXBackTester {
 
   // Walk-forward optimization
   public Map<String, Object> walkForwardOptimization(
-      List<TotalGEX> data,
+      List<GEXData> data,
       int trainingWindow,
       int testingWindow) {
 
@@ -176,8 +175,8 @@ public class GEXBackTester {
     for (int i = 0; i < data.size() - trainingWindow - testingWindow;
          i += testingWindow) {
 
-      List<TotalGEX> trainData = data.subList(i, i + trainingWindow);
-      List<TotalGEX> testData = data.subList(
+      List<GEXData> trainData = data.subList(i, i + trainingWindow);
+      List<GEXData> testData = data.subList(
           i + trainingWindow,
           i + trainingWindow + testingWindow
       );

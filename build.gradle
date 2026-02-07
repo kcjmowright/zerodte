@@ -1,12 +1,24 @@
+buildscript {
+	repositories {
+		mavenCentral()
+	}
+	dependencies {
+		classpath 'org.flywaydb:flyway-gradle-plugin:12.0.0'
+		classpath 'org.flywaydb:flyway-database-postgresql:12.0.0'
+		classpath 'org.postgresql:postgresql:42.7.4'
+	}
+}
+
 plugins {
 	id 'java'
 	id "com.github.node-gradle.node" version "3.5.0"
 	id 'org.springframework.boot' version '4.0.1'
 	id 'io.spring.dependency-management' version '1.1.7'
 	id 'org.graalvm.buildtools.native' version '0.10.5'
-	id 'org.flywaydb.flyway' version '6.4.3'
     id 'com.autonomousapps.dependency-analysis' version '3.4.1'
 }
+
+apply plugin: 'org.flywaydb.flyway'
 
 group = 'com.kcjmowright'
 version = '0.0.1-SNAPSHOT'

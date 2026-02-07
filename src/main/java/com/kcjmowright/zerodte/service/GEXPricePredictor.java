@@ -1,5 +1,6 @@
 package com.kcjmowright.zerodte.service;
 
+import com.kcjmowright.zerodte.model.GEXData;
 import com.kcjmowright.zerodte.model.GEXFeatures;
 import com.kcjmowright.zerodte.model.PricePrediction;
 import com.kcjmowright.zerodte.model.TotalGEX;
@@ -15,6 +16,7 @@ import java.util.List;
 public class GEXPricePredictor {
 
   private final GEXFeatureExtractor featureExtractor;
+  private final GEXDataPreprocessor dataPreprocessor;
 
   public static final String POSITIVE_GEX = "POSITIVE_GEX";
   public static final String NEGATIVE_GEX = "NEGATIVE_GEX";
@@ -22,8 +24,8 @@ public class GEXPricePredictor {
   public static final String DOWN = "DOWN";
   public static final String NEUTRAL = "NEUTRAL";
 
-  public PricePrediction predict(TotalGEX currentSnapshot,
-                                 List<TotalGEX> historicalSnapshots,
+  public PricePrediction predict(GEXData currentSnapshot,
+                                 List<GEXData> historicalSnapshots,
                                  int minutesAhead) {
 
     GEXFeatures features = featureExtractor.extractFeatures(
@@ -31,13 +33,13 @@ public class GEXPricePredictor {
         historicalSnapshots
     );
 
-    String regime = determineRegime(currentSnapshot, features);
+    String regime = determineRegime(currentSnapshot.getTotalGEX(), features);
     BigDecimal predictedMove = calculatePredictedMove(features, regime, minutesAhead);
-    BigDecimal predictedPrice = currentSnapshot.getSpotPrice().add(predictedMove);
+    BigDecimal predictedPrice = currentSnapshot.getTotalGEX().getSpotPrice().add(predictedMove);
 
     return PricePrediction.builder()
-        .predictionTime(currentSnapshot.getTimestamp())
-        .targetTime(currentSnapshot.getTimestamp().plusMinutes(minutesAhead))
+        .predictionTime(currentSnapshot.getTotalGEX().getTimestamp())
+        .targetTime(currentSnapshot.getTotalGEX().getTimestamp().plusMinutes(minutesAhead))
         .predictedPrice(predictedPrice)
         .confidence(calculateConfidence(features))
         .direction(determineDirection(predictedMove))
@@ -169,18 +171,18 @@ public class GEXPricePredictor {
 //    return null; // Implementation depends on your ML framework
 //  }
 
-  private double[] convertToFeatureVector(GEXFeatures features) {
-    return new double[]{
-        features.getDistanceToCallWall().doubleValue(),
-        features.getDistanceToPutWall().doubleValue(),
-        features.getDistanceToFlipPoint().doubleValue(),
-        features.getCallPutGEXRatio().doubleValue(),
-        features.getNetGEX().doubleValue(),
-        features.getGexSkew().doubleValue(),
-        features.getConcentrationIndex().doubleValue(),
-        features.getRelativePosition().doubleValue(),
-        features.getMinutesToExpiry().doubleValue(),
-        features.getPriceVelocity().doubleValue()
-    };
-  }
+//  private double[] convertToFeatureVector(GEXFeatures features) {
+//    return new double[]{
+//        features.getDistanceToCallWall().doubleValue(),
+//        features.getDistanceToPutWall().doubleValue(),
+//        features.getDistanceToFlipPoint().doubleValue(),
+//        features.getCallPutGEXRatio().doubleValue(),
+//        features.getNetGEX().doubleValue(),
+//        features.getGexSkew().doubleValue(),
+//        features.getConcentrationIndex().doubleValue(),
+//        features.getRelativePosition().doubleValue(),
+//        features.getMinutesToExpiry().doubleValue(),
+//        features.getPriceVelocity().doubleValue(),
+//    };
+//  }
 }

@@ -1,8 +1,8 @@
 package com.kcjmowright.zerodte.service;
 
+import com.kcjmowright.zerodte.model.GEXData;
 import com.kcjmowright.zerodte.model.PricePrediction;
 import com.kcjmowright.zerodte.model.StockPriceUpdate;
-import com.kcjmowright.zerodte.model.TotalGEX;
 import com.kcjmowright.zerodte.model.entity.QuoteEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +25,7 @@ public class StockPriceService {
 
   private final SimpMessagingTemplate messagingTemplate;
   private final GEXPredictor predictionService;
-  private final GammaExposureService gammaExposureService;
+  private final GEXService gexService;
   private final PriceService priceService;
   private final LRUCache<String> subscribedSymbols = new LRUCache<>(4);
 
@@ -83,14 +83,17 @@ public class StockPriceService {
   private StockPriceUpdate fetchAndPredict(String symbol) {
     BigDecimal currentPrice =
         priceService.getQuote(symbol).blockOptional().map(QuoteEntity::getMark).orElse(BigDecimal.ZERO);
-    TotalGEX current = gammaExposureService.getLatestBySymbol(symbol);
-    List<TotalGEX> history = gammaExposureService.getMostRecentBySymbol(symbol, 1000);
+    List<GEXData> history = gexService.getGEXDataBySymbolBetweenStartAndEnd(
+        symbol,
+        LocalDateTime.now().minusDays(4),
+        LocalDateTime.now().plusDays(1)
+    );
     Map<Integer, PricePrediction> predictions = (history != null && history.size() > 15) ?
-      predictionService.predictMultiHorizon(
-          current,
-          history,
-          List.of(15, 30, 60)
-      ) : Map.of();
+        predictionService.predictMultiHorizon(
+            history.getLast(),
+            history,
+            List.of(15, 30, 60)
+        ) : Map.of();
 
     return new StockPriceUpdate(
         symbol,

@@ -1,12 +1,11 @@
 package com.kcjmowright.zerodte.service;
 
 import com.kcjmowright.zerodte.model.CrossValidationResult;
+import com.kcjmowright.zerodte.model.GEXData;
 import com.kcjmowright.zerodte.model.GEXFeatures;
 import com.kcjmowright.zerodte.model.HyperparameterResult;
-import com.kcjmowright.zerodte.model.TotalGEX;
 import com.kcjmowright.zerodte.model.TrainingConfig;
 import com.kcjmowright.zerodte.model.TrainingResult;
-import com.kcjmowright.zerodte.repository.TotalGEXRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.deeplearning4j.datasets.iterator.IteratorDataSetIterator;
@@ -17,7 +16,6 @@ import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -29,37 +27,44 @@ import java.util.Map;
 public class GEXModelTrainer {
   private final GEXDataPreprocessor preprocessor;
   private final GEXModelBuilder modelBuilder;
-  private final TotalGEXRepository dataRepository;
+  private final GEXService gexService;
   private static final int BATCH_SIZE = /* number of minutes in trading week */ 1950;
 
   /**
    * Train model with early stopping and validation
+   *
+   * @param config training parameters
+   * @return the training result
    */
-  public TrainingResult trainModel(TrainingConfig config)  {
+  public TrainingResult trainModel(TrainingConfig config) {
     log.info("Starting model training with config: {}", config);
-
     log.info("1. Load and prepare data");
-    List<TotalGEX> snapshots = dataRepository.getTotalGEXBySymbolBetween(
+    List<GEXData> snapshots = gexService.getGEXDataBySymbolBetweenStartAndEnd(
         config.getSymbol(),
         config.getStartDate(),
         config.getEndDate()
     );
 
-    List<GEXFeatures> features = snapshots.stream().map(this::extractFeatures).toList();
+    GEXFeatureExtractor extractor = new GEXFeatureExtractor();
+    List<GEXFeatures> features = new ArrayList<>(snapshots.size());
+    for (int i = 0; i < snapshots.size(); i++) {
+      List<GEXData> history = snapshots.subList(Math.max(0, i - 60), i);
+      features.add(extractor.extractFeatures(snapshots.get(i), history));
+    }
 
     log.info("2. Create dataset");
     DataSet fullDataSet = config.getUseTimeSeries() ?
-      preprocessor.createTimeSeriesDataSet(
-          snapshots,
-          features,
-          config.getSequenceLength(),
-          config.getPredictionHorizon()
-      ) :
-      preprocessor.createDataSet(
-          snapshots,
-          features,
-          config.getPredictionHorizon()
-      );
+        preprocessor.createTimeSeriesDataSet(
+            snapshots,
+            features,
+            config.getSequenceLength(),
+            config.getPredictionHorizon()
+        ) :
+        preprocessor.createDataSet(
+            snapshots,
+            features,
+            config.getPredictionHorizon()
+        );
 
     log.info("3. Split data");
     Map<String, DataSet> splits = preprocessor.splitDataSet(
@@ -87,7 +92,7 @@ public class GEXModelTrainer {
         config
     );
 
-    log.info("6. Save model");
+    log.info("6. Save model and scalars");
     preprocessor.saveModel(model);
     preprocessor.saveScalers();
     return result;
@@ -137,7 +142,10 @@ public class GEXModelTrainer {
                                                 DataSet validSet,
                                                 DataSet testSet,
                                                 TrainingConfig config) {
-
+    log.debug("Train Set:\n{}", trainSet);
+    log.debug("Valid Set:\n{}", validSet);
+    log.debug("Test Set:\n{}", testSet);
+    log.debug("Config:\n{}", config);
     model.setListeners(new ScoreIterationListener(10));
 
     List<Double> trainLosses = new ArrayList<>();
@@ -199,7 +207,6 @@ public class GEXModelTrainer {
     log.info("Test set evaluation:\n{}", testEval.stats());
 
     return TrainingResult.builder()
-        //.model(model)
         .bestEpoch(bestEpoch)
         .bestValidationLoss(bestValidLoss)
         .trainLosses(trainLosses)
@@ -221,7 +228,7 @@ public class GEXModelTrainer {
    * Hyperparameter tuning using grid search
    */
   public HyperparameterResult tuneHyperparameters(
-      List<TotalGEX> snapshots,
+      List<GEXData> snapshots,
       List<GEXFeatures> features,
       Map<String, List<Object>> hyperparamGrid) {
 
@@ -265,7 +272,7 @@ public class GEXModelTrainer {
    */
   public CrossValidationResult crossValidate(
       String symbol,
-      List<TotalGEX> snapshots,
+      List<GEXData> snapshots,
       List<GEXFeatures> features,
       int numFolds,
       TrainingConfig baseConfig) {
@@ -282,7 +289,7 @@ public class GEXModelTrainer {
       int testStart = fold * foldSize;
       int testEnd = (fold + 1) * foldSize;
 
-      List<TotalGEX> trainSnaps = new ArrayList<>();
+      List<GEXData> trainSnaps = new ArrayList<>();
       // List<GEXFeatures> trainFeats = new ArrayList<>();
 
       trainSnaps.addAll(snapshots.subList(0, testStart));
@@ -293,8 +300,8 @@ public class GEXModelTrainer {
 
       // Create temporary config for this fold
       TrainingConfig foldConfig = baseConfig.toBuilder()
-          .startDate(trainSnaps.getFirst().getTimestamp())
-          .endDate(trainSnaps.getLast().getTimestamp())
+          .startDate(trainSnaps.getFirst().getCreated())
+          .endDate(trainSnaps.getLast().getCreated())
           .build();
 
       // Train and evaluate
@@ -355,11 +362,6 @@ public class GEXModelTrainer {
         .average()
         .orElse(0.0);
     return Math.sqrt(variance);
-  }
-
-  private GEXFeatures extractFeatures(TotalGEX snapshot) {
-    // Delegate to feature extractor
-    return new GEXFeatureExtractor().extractFeatures(snapshot, List.of());
   }
 
 }
