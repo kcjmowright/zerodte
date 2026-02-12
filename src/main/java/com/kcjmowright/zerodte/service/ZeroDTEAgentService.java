@@ -253,7 +253,7 @@ public class ZeroDTEAgentService {
     if (symbols.isEmpty()) {
       return BigDecimal.ZERO;
     }
-    Map<String, PositionEntity> positions = positionRepository.findBySymbolIn(symbols).stream()
+    Map<String, PositionEntity> positions = positionRepository.findByClosedIsNullAndSymbolIn(symbols).stream()
         .collect(toMap(PositionEntity::getSymbol, Function.identity()));
     BigDecimal purchasePrice = positions.values().stream()
         .map(position -> position.getPurchasePrice().multiply(position.getQuantity()))
@@ -412,7 +412,7 @@ public class ZeroDTEAgentService {
         .toStream()
         .collect(toMap(QuoteResponse::getSymbol, this::getMark));
     LocalDateTime now = LocalDateTime.now();
-    positionRepository.findBySymbolIn(symbols).stream().peek(position -> {
+    positionRepository.findByClosedIsNullAndSymbolIn(symbols).stream().peek(position -> {
       position.setClosed(now);
       position.setSellPrice(quotes.get(position.getSymbol()));
     }).forEach(positionRepository::save);

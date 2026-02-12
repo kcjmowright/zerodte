@@ -12,5 +12,5 @@ public interface PositionRepository extends JpaRepository<PositionEntity, Long> 
 
     List<PositionEntity> findByClosedNotNullAndCreatedIsAfter(LocalDateTime created);
     List<PositionEntity> findByClosedIsNull();
-    List<PositionEntity> findBySymbolIn(Collection<String> symbols);
+    List<PositionEntity> findByClosedIsNullAndSymbolIn(Collection<String> symbols);
 }
