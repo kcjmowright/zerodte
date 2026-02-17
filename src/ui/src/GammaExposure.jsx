@@ -80,11 +80,11 @@ function GammaExposure() {
         const thirdFridayThisMonth = getNthFriday(startDay.getFullYear(), startDay.getMonth(), 3);
         if (thirdFridayThisMonth.getTime() > today.getTime()) { // If 3rd Friday this month is not in the past
             dates.push(thirdFridayThisMonth.toISOString().split('T')[0]);
+        } else {
+            const nextMonth = new Date(startDay.getFullYear(), startDay.getMonth() + 1, 1);
+            const thirdFridayNextMonth = getNthFriday(nextMonth.getFullYear(), nextMonth.getMonth(), 3);
+            dates.push(thirdFridayNextMonth.toISOString().split('T')[0]);
         }
-
-        const nextMonth = new Date(startDay.getFullYear(), startDay.getMonth() + 1, 1);
-        const thirdFridayNextMonth = getNthFriday(nextMonth.getFullYear(), nextMonth.getMonth(), 3);
-        dates.push(thirdFridayNextMonth.toISOString().split('T')[0]);
         return dates;
     }
 
